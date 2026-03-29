@@ -1,0 +1,220 @@
+<!--
+    =======================================================================================
+    ARQUIVO DO SISTEMA: funcionarios.html
+    DESCRIÇÃO: Interface de Gestão de Equipe (CRUD de Funcionários/Usuários do Sistema).
+    Local onde o administrador gerencia cargos, comissões em percentual (%Venda) e senhas de acesso.
+    =======================================================================================
+-->
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <?!= include('style'); ?>
+
+    <?!= include('script'); ?>
+
+    <style>
+        .form {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            background: white;
+            border-radius: 10px;
+        }
+
+        td,
+        th {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        button {
+            padding: 5px 10px;
+            margin: 2px;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div class="header">
+        <h2>👤 Funcionarios</h2>
+    </div>
+
+    <div class="container">
+
+        <div class="back" onclick="abrir('index')">⬅ Volver</div>
+
+        <div class="form">
+
+            <input id="nome" placeholder="Nombre">
+
+            <input id="chave" placeholder="Clave acceso">
+
+            <input id="funcao" placeholder="Función">
+
+            <input id="telefone" placeholder="Teléfono">
+
+            <input id="email" placeholder="Email">
+
+            <input id="comissao" placeholder="Comisión %">
+
+            <input id="salario" placeholder="Salario">
+
+            <select id="ativo">
+                <option value="SI">Activo</option>
+                <option value="NO">Inactivo</option>
+            </select>
+
+            <!-- Botão com proteção anti-duplicação -->
+            <button id="btn_guardar" onclick="guardar()">Guardar</button>
+
+        </div>
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>Nombre</th>
+                    <th>Función</th>
+                    <th>Comisión</th>
+                    <th>Acción</th>
+                </tr>
+
+            </thead>
+
+            <tbody id="lista"></tbody>
+
+        </table>
+
+    </div>
+
+    <script>
+
+        var editId = null;
+
+        function cargar() {
+
+            google.script.run
+                .withSuccessHandler(function (data) {
+
+                    var html = "";
+
+                    data.forEach(function (f) {
+
+                        html += `
+<tr>
+<td>${f.nome}</td>
+<td>${f.funcao}</td>
+<td>${f.comissao}%</td>
+<td>
+
+<button onclick="editar('${f.id}')">Editar</button>
+
+<button onclick="eliminar('${f.id}')">Eliminar</button>
+
+</td>
+</tr>
+`;
+
+                    });
+
+                    document.getElementById("lista").innerHTML = html;
+
+                })
+                .getFuncionarios();
+
+        }
+
+        // =======================================================================================
+        // GUARDAR OU EDITAR FUNCIONARIO (Proteção Assíncrona e Spinners)
+        // -> Protege contra duplo-clique desabilitando o botão e mostrando o spinner.
+        // -> Envia os dados para código.gs `addFuncionario` ou `editarFuncionario`.
+        // =======================================================================================
+        function guardar() {
+            var btn = document.getElementById("btn_guardar");
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div> Aguarde...';
+
+            var data = {
+
+                id: editId,
+                nome: nome.value,
+                chave: chave.value,
+                funcao: funcao.value,
+                telefone: telefone.value,
+                email: email.value,
+                comissao: comissao.value,
+                salario: salario.value,
+                ativo: ativo.value
+
+            };
+
+            if (editId) {
+                // Modo Edição
+                google.script.run
+                    .withSuccessHandler(() => {
+                        editId = null;
+                        btn.disabled = false;
+                        btn.innerHTML = 'Guardar';
+                        cargar();
+                    })
+                    .withFailureHandler((err) => {
+                        alert("Erro ao editar: " + err.message);
+                        btn.disabled = false;
+                        btn.innerHTML = 'Guardar';
+                    })
+                    .editarFuncionario(data);
+
+            } else {
+                // Modo Criação
+                google.script.run
+                    .withSuccessHandler(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = 'Guardar';
+                        cargar();
+                    })
+                    .withFailureHandler((err) => {
+                        alert("Erro ao criar: " + err.message);
+                        btn.disabled = false;
+                        btn.innerHTML = 'Guardar';
+                    })
+                    .addFuncionario(data);
+            }
+        }
+
+        function editar(id) {
+
+            editId = id;
+
+        }
+
+        function eliminar(id) {
+
+            if (confirm("Eliminar?")) {
+
+                google.script.run
+                    .withSuccessHandler(() => cargar())
+                    .deletarFuncionario(id);
+
+            }
+
+        }
+
+        cargar();
+
+    </script>
+
+</body>
+
+</html>

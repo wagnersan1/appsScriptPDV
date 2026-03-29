@@ -1,0 +1,191 @@
+<!--
+    =======================================================================================
+    ARQUIVO DO SISTEMA: painel.html
+    DESCRIÇÃO: Dashboard Avançado de Desempenho (Painel do Administrador/Gerente).
+    Gera um gráfico do Google Charts e uma tabela de ranking mostrando os Vendedores que mais faturaram,
+    junto com suas numerações e comissões consolidadas via getDashboardVendedores().
+    =======================================================================================
+-->
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <?!= include('style'); ?>
+    <?!= include('script'); ?>
+
+    <script src="https://www.gstatic.com/charts/loader.js"></script>
+
+    <style>
+        .chart-box {
+
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+
+        }
+
+        .table {
+
+            width: 100%;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+
+        }
+
+        .table th,
+        .table td {
+
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+
+        }
+
+        .rank {
+
+            font-weight: bold;
+            color: #27ae60;
+
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div class="header">
+
+        <h2>📊 Dashboard Avançado</h2>
+
+        <div class="user">👤 Admin</div>
+
+    </div>
+
+    <div class="container">
+
+        <div class="back" onclick="abrir('index')">
+            ⬅ Volver
+        </div>
+
+        <!-- GRAFICO -->
+        <div class="chart-box">
+
+            <h3>Ventas por vendedor</h3>
+
+            <div id="graficoVendedores" style="height:400px;"></div>
+
+        </div>
+
+        <!-- TABELA -->
+        <div class="chart-box">
+
+            <h3>Ranking de vendedores</h3>
+
+            <table class="table">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Rank</th>
+                        <th>Vendedor</th>
+                        <th>Total vendido (ARS)</th>
+                        <th>Comisión</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody id="tablaVendedores">
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+    <script>
+
+        // carregar charts
+        google.charts.load('current', { 'packages': ['corechart'] });
+
+        function cargarDashboard() {
+
+            google.script.run
+                .withSuccessHandler(function (data) {
+
+                    crearGrafico(data);
+                    crearTabla(data);
+
+                })
+                .getDashboardVendedores();
+
+        }
+
+        function crearGrafico(data) {
+
+            var chartData = new google.visualization.DataTable();
+
+            chartData.addColumn('string', 'Vendedor');
+            chartData.addColumn('number', 'Ventas');
+
+            data.forEach(function (v) {
+
+                chartData.addRow([v.nome, v.total]);
+
+            });
+
+            var options = {
+
+                title: 'Ventas por vendedor',
+                legend: { position: 'bottom' }
+
+            };
+
+            var chart =
+                new google.visualization.ColumnChart(
+                    document.getElementById('graficoVendedores')
+                );
+
+            chart.draw(chartData, options);
+
+        }
+
+        function crearTabla(data) {
+
+            data.sort((a, b) => b.total - a.total);
+
+            var html = "";
+
+            data.forEach(function (v, i) {
+
+                html += `
+<tr>
+<td class="rank">#${i + 1}</td>
+<td>${v.nome}</td>
+<td>${v.total.toFixed(2)}</td>
+<td>${v.comissao.toFixed(2)}</td>
+</tr>
+`;
+
+            });
+
+            document.getElementById("tablaVendedores").innerHTML = html;
+
+        }
+
+        google.charts.setOnLoadCallback(cargarDashboard);
+
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,98 @@
+<!--
+    =======================================================================================
+    ARQUIVO DO SISTEMA: separa.html (Módulo Fornecedores)
+    DESCRIÇÃO: Tela de Gestão de Parceiros Comerciais (Fornecedores).
+    Lista o portfólio de empresas (Ex: Hotéis, Agências de Passeio, Guias) com as quais o PDV
+    possui conexão de serviços, lendo do banco de dados na aba "FORNECEDORES".
+    =======================================================================================
+-->
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <?!= include('style'); ?>
+    <?!= include('script'); ?>
+        .btn-voltar {
+            background: #34495e;
+            color: white;
+            padding: 8px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        th {
+            background: #2c3e50;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h2>🤝 GESTÃO DE FORNECEDORES</h2>
+        <button class="btn-voltar" onclick="abrir('index')">⬅️ Voltar</button>
+
+
+        <div class="container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome / Empresa</th>
+                        <th>Representante</th>
+                        <th>Telefone</th>
+                        <th>Serviço Prestado</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaCorpo">
+                    <tr>
+                        <td colspan="4">Carregando fornecedores...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <script>
+            function carregarFornecedores() {
+                google.script.run
+                    .withSuccessHandler(function (dados) {
+                        var html = "";
+                        if (dados.length == 0) {
+                            html = "<tr><td colspan='4'>Nenhum fornecedor encontrado.</td></tr>";
+                        } else {
+                            dados.forEach(function (f) {
+                                html += "<tr>" +
+                                    "<td><strong>" + f.nome + "</strong></td>" +
+                                    "<td>" + f.representante + "</td>" +
+                                    "<td>" + f.telefone + "</td>" +
+                                    "<td>" + f.servico + "</td>" +
+                                    "</tr>";
+                            });
+                        }
+                        document.getElementById("tabelaCorpo").innerHTML = html;
+                    })
+                    .getFornecedores();
+            }
+            carregarFornecedores();
+        </script>
+</body>
+
+</html>

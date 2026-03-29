@@ -1,0 +1,224 @@
+
+<!--
+    =======================================================================================
+    ARQUIVO DO SISTEMA: clientes.html
+    DESCRIÇÃO: Módulo de Cadastro de Pessoas (CRM Básico).
+    Interface de CRUD completo para gerenciar quem compra os pacotes de viagem.
+    As funções JS deste arquivo acessam as funções: getClientes(), addCliente(), editarCliente(), deletarCliente() no backend.
+    =======================================================================================
+-->
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <?!= include('style'); ?>
+
+    <?!= include('script'); ?>
+
+    <style>
+        .form {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            background: white;
+            border-radius: 10px;
+        }
+
+        td,
+        th {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div class="header">
+        <h2>👥 Clientes</h2>
+    </div>
+
+    <div class="container">
+
+        <div class="back" onclick="abrir('index')">⬅ Volver</div>
+
+        <div class="form">
+
+            <input id="nome" placeholder="Nombre">
+
+            <input id="nacionalidad" placeholder="Nacionalidad">
+
+            <input id="tipo_doc" placeholder="Tipo documento">
+
+            <input id="documento" placeholder="Documento">
+
+            <input id="telefone" placeholder="Teléfono">
+
+            <input id="email" placeholder="Email">
+
+            <input id="hotel" placeholder="Hotel">
+
+            <input id="quarto" placeholder="Habitación">
+
+            <textarea id="obs" placeholder="Observaciones"></textarea>
+
+            <!-- Botão com proteção anti-duplicação de cadastros -->
+            <button id="btn_guardar" onclick="guardar()">Guardar</button>
+
+        </div>
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>Nombre</th>
+                    <th>Documento</th>
+                    <th>Hotel</th>
+                    <th>Acción</th>
+                </tr>
+
+            </thead>
+
+            <tbody id="lista"></tbody>
+
+        </table>
+
+    </div>
+
+    <script>
+
+        var editId = null;
+
+        function cargar() {
+
+            google.script.run
+                .withSuccessHandler(function (data) {
+
+                    var html = "";
+
+                    data.forEach(function (c) {
+
+                        html += `
+<tr>
+
+<td>${c.nome}</td>
+<td>${c.documento}</td>
+<td>${c.hotel}</td>
+
+<td>
+
+<button onclick="editar('${c.id}')">
+Editar
+</button>
+
+<button onclick="eliminar('${c.id}')">
+Eliminar
+</button>
+
+</td>
+
+</tr>
+`;
+
+                    });
+
+                    lista.innerHTML = html;
+
+                })
+                .getClientes();
+
+        }
+
+        // =======================================================================================
+        // GUARDAR OU EDITAR CLIENTE (Proteção Assíncrona e Spinners)
+        // -> Protege contra duplo-clique desabilitando o botão e mostrando o spinner.
+        // -> Envia os dados para código.gs `addCliente` ou `editarCliente`.
+        // =======================================================================================
+        function guardar() {
+            var btn = document.getElementById("btn_guardar");
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div> Aguarde...';
+
+            var data = {
+
+                id: editId,
+                nome: nome.value,
+                nacionalidad: nacionalidad.value,
+                tipo_doc: tipo_doc.value,
+                documento: documento.value,
+                telefone: telefone.value,
+                email: email.value,
+                hotel: hotel.value,
+                quarto: quarto.value,
+                obs: obs.value
+
+            };
+
+            if (editId) {
+                // Modo Edição
+                google.script.run
+                    .withSuccessHandler(() => {
+                        editId = null;
+                        btn.disabled = false;
+                        btn.innerHTML = 'Guardar';
+                        cargar();
+                    })
+                    .withFailureHandler((err) => {
+                        alert("Erro ao editar: " + err.message);
+                        btn.disabled = false;
+                        btn.innerHTML = 'Guardar';
+                    })
+                    .editarCliente(data);
+
+            } else {
+                // Modo Criação
+                google.script.run
+                    .withSuccessHandler(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = 'Guardar';
+                        cargar();
+                    })
+                    .withFailureHandler((err) => {
+                        alert("Erro ao criar: " + err.message);
+                        btn.disabled = false;
+                        btn.innerHTML = 'Guardar';
+                    })
+                    .addCliente(data);
+            }
+        }
+
+        function editar(id) {
+
+            editId = id;
+
+        }
+
+        function eliminar(id) {
+
+            if (confirm("Eliminar cliente?")) {
+
+                google.script.run
+                    .withSuccessHandler(() => cargar())
+                    .deletarCliente(id);
+
+            }
+
+        }
+
+        cargar();
+
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,151 @@
+
+<script>
+    /**
+     * =======================================================================================
+     * ARQUIVO DO SISTEMA: script.html
+     * DESCRIÇÃO: Este arquivo funciona como o CORE em Javascript do Front-End.
+     * Ele é injetado automaticamente em todas as páginas do sistema via <?!= include('script'); ?>.
+     * Aqui residem as funções universais responsáveis por: Controle de Sessão (Login/Logout), 
+     * Roteamento de Tela (abrir), Autorização de Níveis de Acesso (getPermisos) e Formatadores padrão.
+     * =======================================================================================
+     */
+
+    // =============================
+    // NAVEGAÇÃO ENTRE PÁGINAS
+    // =============================
+
+    function getPermisos(funcao) {
+
+        var permisos = {
+
+            ADMIN: {
+                paginas: ["index", "ventas", "clientes", "caja", "funcionarios", "dashboard", "dashboard_empresa", "reportes"],
+                acciones: ["crear", "editar", "eliminar", "ver"]
+            },
+
+            GERENTE: {
+                paginas: ["index", "ventas", "clientes", "caja", "dashboard", "reportes"],
+                acciones: ["crear", "editar", "ver"]
+            },
+
+            VENDEDOR: {
+                paginas: ["index", "ventas", "clientes"],
+                acciones: ["crear", "ver"]
+            },
+
+            CAJA: {
+                paginas: ["index", "caja"],
+                acciones: ["crear", "ver"]
+            }
+
+        };
+
+        return permisos[funcao] || { paginas: [], acciones: [] };
+
+    }
+
+    // =============================
+    // URL BASE DO GOOGLE APP SCRIPT
+    // =============================
+    var BASE_URL = "<?!= ScriptApp.getService().getUrl() ?>";
+
+    // =============================
+    // LOGOUT
+    // =============================
+    function logout() {
+        localStorage.removeItem("user");
+        window.top.location.href = BASE_URL + "?page=login";
+    }
+
+    // =============================
+    // ABRIR PÁGINA
+    // =============================
+    function abrir(page) {
+        window.top.location.href = BASE_URL + "?page=" + page;
+    }
+
+    // =============================
+    // VERIFICAR LOGIN
+    // =============================
+    function verificarLogin() {
+        var user = JSON.parse(localStorage.getItem("user"));
+        if (!user || !user.id) {
+            window.top.location.href = BASE_URL + "?page=login";
+            return null;
+        }
+        return user;
+    }
+
+
+
+    // =============================
+    // MOSTRAR NOME DO USUÁRIO
+    // =============================
+    function mostrarUsuario() {
+
+        var user = verificarLogin();
+
+        if (user) {
+
+            var el = document.querySelector(".user");
+
+            if (el)
+                el.innerHTML = "👤 " + user.nome + " (" + user.funcao + ")";
+
+        }
+
+    }
+
+
+    // =============================
+    // FORMATAR MOEDA
+    // =============================
+    function formatMoney(valor) {
+
+        return Number(valor)
+            .toLocaleString("es-AR", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+
+    }
+
+
+    // =============================
+    // FORMATAR DATA
+    // =============================
+    function formatDate(data) {
+
+        var d = new Date(data);
+
+        return d.toLocaleDateString("es-AR");
+
+    }
+
+
+    // =============================
+    // ALERT EMPRESARIAL
+    // =============================
+    function alerta(msg) {
+
+        alert(msg);
+
+    }
+
+
+    // =============================
+    // CONFIRMAR
+    // =============================
+    function confirmar(msg) {
+
+        return confirm(msg);
+
+    }
+
+
+    // =============================
+    // CARREGAR USUÁRIO AUTOMÁTICO
+    // =============================
+    window.addEventListener("DOMContentLoaded", mostrarUsuario);
+
+</script>

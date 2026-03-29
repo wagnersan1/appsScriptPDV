@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Fatura e Voucher - PDV Turismo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #eef2f7;
+            color: #333;
+        }
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            padding: 20mm;
+            margin: 10mm auto;
+            border: 1px #D3D3D3 solid;
+            border-radius: 5px;
+            background: white;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+        @media print {
+            .page {
+                margin: 0;
+                border: initial;
+                border-radius: initial;
+                width: initial;
+                min-height: initial;
+                box-shadow: initial;
+                background: initial;
+                page-break-after: always;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        h1, h2, h3 { color: #2c3e50; }
+        .row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .info-box { padding: 15px; border: 1px solid #ddd; background: #f9f9f9; width: 48%; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background-color: #f4f4f4; color: #2c3e50;}
+        .total { font-weight: bold; font-size: 18px; text-align: right; margin-top: 15px; }
+        .terms { font-size: 11px; color: #555; border-top: 1px solid #ccc; padding-top: 10px; margin-top: 30px; text-align: justify; }
+        .btn-print { display: block; width: 250px; padding: 15px; background: #27ae60; color: white; text-align: center; margin: 20px auto; cursor: pointer; border-radius: 5px; text-decoration: none; font-weight: bold; font-size: 16px; border: none; transition: 0.3s;}
+        .btn-print:hover { background: #2ecc71; transform: scale(1.05);}
+    </style>
+</head>
+<body>
+    <div class="no-print" style="text-align:center;">
+        <button class="btn-print" onclick="window.print()"><i class="fa fa-print"></i> IMPRIMIR COMPROVANTES</button>
+        <p style="color:#666; font-size:14px;">Utilize (Ctrl + P) para salvar como PDF ou Enviar para Impressora Térmica.</p>
+    </div>
+
+    <!-- FATURA -->
+    <div class="page" id="faturaPage">
+        <div class="header">
+            <h1 style="letter-spacing: 2px;">TRAVEL SANTUR</h1>
+            <p>Rodriguez Peña 1554 1712, Castelar, Morón<br>
+            Teléfono: (+55) 31-992949567 | (+54) 11-61899673<br>
+            Infor: travelsantur.com</p>
+        </div>
+
+        <div style="text-align: right; margin-bottom: 20px;">
+            <p><b>FACTURA N.º:</b> <span id="fat_nro"></span></p>
+            <p><b>FECHA:</b> <span id="fat_data"></span></p>
+        </div>
+
+        <h3>PARA:</h3>
+        <div class="row">
+            <div class="info-box">
+                <p><b>Nombre:</b> <span id="cli_nome"></span></p>
+                <p><b>Documento:</b> <span id="cli_doc"></span></p>
+            </div>
+            <div class="info-box">
+                <p><b>Teléfono:</b> <span id="cli_tel"></span></p>
+                <p><b>Hotel:</b> <span id="cli_email"></span></p>
+            </div>
+        </div>
+
+        <h3>SERVICIOS CONTRATADOS</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Descripción</th>
+                    <th>Pasajeros</th>
+                    <th>Importe Unit.</th>
+                    <th>Subtotal</th>
+                </tr>
+            </thead>
+            <tbody id="fat_tabela">
+            </tbody>
+        </table>
+
+        <div class="total">
+            TOTAL <span id="fat_moeda"></span>: <span id="fat_total"></span>
+        </div>
+
+        <div class="terms">
+            <b>Términos y Condiciones / Cancelaciones:</b>
+            <p>Las cancelaciones de servicios deben realizarse con al menos 36 horas de anticipación a la fecha programada. Los servicios contratados para el mismo día no son cancelables. En caso de no-show (no presentarse), no se realizará ningún reembolso.</p>
+        </div>
+    </div>
+
+    <!-- VOUCHER -->
+    <div class="page" id="voucherPage">
+        <div class="header">
+            <h1 style="letter-spacing: 2px;">VOUCHER DE SERVICIO</h1>
+            <p style="font-size: 18px;">TRAVEL SANTUR | travelsantur.com</p>
+        </div>
+        
+        <div class="row" style="margin-top: 30px; border: 2px dashed #ccc; padding: 20px; background: #fafafa;">
+            <div style="width: 100%;">
+                <p style="font-size: 20px;"><b>Nº LOCALIZADOR:</b> <span id="vou_nro" style="color: #e74c3c;"></span></p>
+                <p style="font-size: 18px;"><b>TITULAR RESPONSABLE:</b> <span id="vou_nome"></span></p>
+                <p><b>FECHA DE EMISIÓN:</b> <span id="vou_data"></span></p>
+            </div>
+        </div>
+
+        <h3 style="margin-top:40px;">ITINERARIO / TOURS</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Servicio Tour</th>
+                    <th>Pasajeros Ingresantes</th>
+                </tr>
+            </thead>
+            <tbody id="vou_tabela">
+            </tbody>
+        </table>
+
+        <div class="terms" style="margin-top: 50px; text-align: center; border: none;">
+            <b style="font-size: 16px; color:#c0392b;">ATENCIÓN: Es obligatorio presentar este voucher impreso o digital al momento del embarque/tour junto con el documento de identidad.</b>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            var dataJson = localStorage.getItem("fatura_data");
+            if (!dataJson) {
+                document.body.innerHTML = "<h2 style='text-align:center; margin-top:50px;'>Ninguna venta encontrada en la sesión de memoria. Por favor, guarde una venta primero.</h2>";
+                return;
+            }
+            var d = JSON.parse(dataJson);
+            
+            document.getElementById("fat_nro").innerText = d.idTransacao.substring(0,8).toUpperCase();
+            document.getElementById("vou_nro").innerText = d.idTransacao.substring(0,8).toUpperCase();
+            
+            var dataFormato = new Date().toLocaleDateString("es-AR");
+            document.getElementById("fat_data").innerText = dataFormato;
+            document.getElementById("vou_data").innerText = dataFormato;
+            
+            document.getElementById("cli_nome").innerText = d.cliente || "CONSUMIDOR FINAL";
+            document.getElementById("vou_nome").innerText = d.cliente || "CONSUMIDOR FINAL";
+            document.getElementById("cli_doc").innerText = "Registrado en Sistema";
+            document.getElementById("cli_tel").innerText = "Registrado en Sistema";
+            document.getElementById("cli_email").innerText = "Registrado en Sistema";
+
+            var htmlFat = "";
+            var htmlVou = "";
+            d.carrinho.forEach(function(item) {
+                var pax = Number(item.adultos) + Number(item.criancas) + Number(item.bebes);
+                var sub = item.valor_unitario * pax;
+                htmlFat += `<tr>
+                    <td><b>${item.servico}</b><br><small>(${item.adultos} Ad, ${item.criancas} N, ${item.bebes} B)</small></td>
+                    <td>${pax}</td>
+                    <td>${item.valor_unitario.toFixed(2)}</td>
+                    <td>$ ${sub.toFixed(2)}</td>
+                </tr>`;
+                
+                htmlVou += `<tr>
+                    <td style='font-size:18px; font-weight:bold; color: #2980b9;'>${item.servico}</td>
+                    <td style='font-size:16px;'>Adultos: <b>${item.adultos}</b> | Niños: <b>${item.criancas}</b> | Bebés: <b>${item.bebes}</b></td>
+                </tr>`;
+            });
+            document.getElementById("fat_tabela").innerHTML = htmlFat;
+            document.getElementById("vou_tabela").innerHTML = htmlVou;
+
+            document.getElementById("fat_moeda").innerText = d.moeda;
+            document.getElementById("fat_total").innerText = "$ " + d.total.toFixed(2);
+        };
+    </script>
+</body>
+</html>

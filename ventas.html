@@ -1,0 +1,489 @@
+
+<!DOCTYPE html>
+
+
+<html lang="pt-BR">
+
+<head>
+    <title>Vendas - PDV Turismo</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <?!= include('style'); ?>
+    <?!= include('script'); ?>
+
+    <style>
+        .form-box {
+            max-width: 600px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin-top: 10px;
+        }
+
+        input,
+        select,
+        button {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+        }
+
+        #lista_clientes div:hover {
+            background: #f0f0f0;
+        }
+
+        .result {
+            margin-top: 15px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div class="form-box">
+
+        <label for="funcionario">Funcionario</label>
+        <select id="funcionario" title="Selecione um funcionário">
+            <option value="João" data-comision="10">João (10%)</option>
+            <option value="Maria" data-comision="8">Maria (8%)</option>
+            <option value="Carlos" data-comision="12">Carlos (12%)</option>
+        </select>
+
+        <!-- CLIENTE AUTOCOMPLETE -->
+        <label for="cliente_buscar">Cliente</label>
+
+        <input type="text" id="cliente_buscar" placeholder="Digite nome do cliente" title="Digite nome do cliente"
+            onkeyup="buscarCliente()">
+
+        <input type="hidden" id="cliente_id" title="ID oculto do cliente">
+
+        <div id="lista_clientes" class="autocomplete-list">
+        </div>
+
+        <label for="servicio_buscar">Servicio</label>
+        <input type="text" id="servicio_buscar" placeholder="Digite nome do serviço" title="Digite nome do serviço"
+            onkeyup="buscarServico()">
+        <div id="lista_servicos" class="autocomplete-list"></div>
+
+        <label for="adultos">Adultos</label>
+        <input type="number" id="adultos" value="0" title="Quantidade de adultos">
+
+        <label for="criancas">Crianças</label>
+        <input type="number" id="criancas" value="0" title="Quantidade de crianças">
+
+        <label for="bebes">Bebês</label>
+        <input type="number" id="bebes" value="0" title="Quantidade de bebês">
+
+        <label for="valor_unitario">Valor Unitário</label>
+        <input type="number" id="valor_unitario" title="Valor Unitário do Serviço" readonly>
+
+        <label for="custo_unitario">Custo Unitário</label>
+        <input type="number" id="custo_unitario" title="Custo Unitário do Serviço" readonly>
+
+        <button type="button" onclick="adicionarAoCarrinho()"
+            style="background-color: #27ae60; margin-bottom: 20px; color: white;">+ Adicionar ao Carrinho</button>
+
+        <div id="carrinho_lista"
+            style="background: #fdfdfd; border: 1px solid #ddd; padding: 10px; border-radius: 5px; margin-bottom: 20px; min-height: 50px;">
+            <p style="text-align:center; color:#999; margin: 0;">O carrinho está vazio.</p>
+        </div>
+
+        <label for="moneda">Moneda</label>
+        <select id="moneda" title="Selecione a Moeda">
+            <option value="ARS">Peso Argentino</option>
+            <option value="USD">Dólar</option>
+            <option value="BRL">Real</option>
+        </select>
+
+        <label for="usd_rate">Taxa USD → ARS</label>
+        <input type="number" id="usd_rate" value="1200" title="Taxa USD para ARS">
+
+        <label for="brl_rate">Taxa BRL → ARS</label>
+        <input type="number" id="brl_rate" value="240" title="Taxa BRL para ARS">
+
+        <label for="forma_pagamento">Forma de pagamento</label>
+        <select id="forma_pagamento" title="Selecione a Forma de Pagamento">
+            <option>Dinheiro</option>
+            <option>PIX</option>
+            <option>Cartão</option>
+            <option>Transferência</option>
+        </select>
+
+        <label for="status">Status</label>
+        <select id="status" title="Selecione o Status">
+            <option>Confirmado</option>
+            <option>Pendente</option>
+            <option>Cancelado</option>
+        </select>
+
+        <!-- ========================================================================= -->
+        <!-- AREA EXCLUSIVA ADMIN/GERENTE                                              -->
+        <!-- Estes campos existem no HTML mas ficam invisíveis via CSS (display: none)  -->
+        <!-- Eles só são ativados no JS caso o localStorage confirme a função superior -->
+        <!-- ========================================================================= -->
+        <div id="area_admin" class="admin-panel">
+            <p style="margin-top: 0; color: #2980b9; font-weight: bold;"><i class="fa-solid fa-lock-open"></i> Opções de
+                Gerência</p>
+
+            <label for="desconto">Desconto (Valor Fixo)</label>
+            <input type="number" id="desconto" value="0" title="Desconto Fixo">
+
+            <label for="usar_cambio_manual">Aplicar Taxa de Câmbio Manual?</label>
+            <select id="usar_cambio_manual" title="Aplicar Câmbio Manual">
+                <option value="NAO">Não (Usar Câmbio Padrão do Sistema)</option>
+                <option value="SIM">Sim</option>
+            </select>
+
+            <label for="taxa_manual">Taxa de Câmbio (Manual)</label>
+            <input type="number" id="taxa_manual" value="1" title="Valor do Câmbio Manual">
+        </div>
+        <!-- FIM AREA EXCLUSIVA -->
+
+        <button onclick="calcular()">Calcular Totais (Aplicar Descontos Manuais)</button>
+
+        <button id="btn_guardar" onclick="guardar()">Guardar Venta</button>
+
+        <div class="result" id="resultado"></div>
+
+    </div>
+
+    <script>
+        // =======================================================================================
+        // ON LOAD - VERIFICADOR DE PERMISSOES DE TELA
+        // Lê a sessão salva no navegador (localStorage). Se for ADMIN ou GERENTE, desbloqueia
+        // a aba de descontos e câmbio gerencial.
+        // ps: O backend SEMPRE revalida se o usuário forjou isso!
+        // =======================================================================================
+        window.addEventListener("DOMContentLoaded", function () {
+            var userLocal = verificarLogin();
+            if (userLocal && (userLocal.funcao === "ADMIN" || userLocal.funcao === "GERENTE" || userLocal.funcao === "CO")) {
+                document.getElementById("area_admin").style.display = "block";
+            }
+        });
+
+        // ===============================
+        // AUTOCOMPLETE CLIENTE
+        // ===============================
+        var debounceBuscaCliente;
+
+        function buscarCliente() {
+            clearTimeout(debounceBuscaCliente);
+
+            debounceBuscaCliente = setTimeout(function () {
+                var texto = document.getElementById("cliente_buscar").value;
+
+                if (texto.length < 2) {
+                    document.getElementById("lista_clientes").innerHTML = "";
+                    document.getElementById("lista_clientes").style.display = "none";
+                    return;
+                }
+
+                google.script.run
+                    .withSuccessHandler(function (clientes) {
+                        var html = "";
+                        clientes.forEach(function (c) {
+                            html += `
+    <div onclick="selecionarCliente('${c.id}','${c.nome}')">
+        ${c.nome} | ${c.documento} | ${c.hotel}
+    </div>`;
+                        });
+
+                        document.getElementById("lista_clientes").innerHTML = html;
+                        document.getElementById("lista_clientes").style.display = "block";
+                    })
+                    .buscarClientes(texto);
+            }, 300);
+        }
+
+        function selecionarCliente(id, nome) {
+
+            document.getElementById("cliente_id").value = id;
+
+            document.getElementById("cliente_buscar").value = nome;
+
+            document.getElementById("lista_clientes").innerHTML = "";
+            document.getElementById("lista_clientes").style.display = "none";
+
+        }
+
+        // ===============================
+        // AUTOCOMPLETE SERVICO
+        // ===============================
+        var debounceBuscaServico;
+
+        function buscarServico() {
+            clearTimeout(debounceBuscaServico);
+
+            debounceBuscaServico = setTimeout(function () {
+                var texto = document.getElementById("servicio_buscar").value;
+
+                if (texto.length < 2) {
+                    document.getElementById("lista_servicos").innerHTML = "";
+                    document.getElementById("lista_servicos").style.display = "none";
+                    return;
+                }
+
+                google.script.run
+                    .withSuccessHandler(function (servicos) {
+                        var html = "";
+                        servicos.forEach(function (s) {
+                            html += `
+    <div onclick="selecionarServico('${s.nome}', '${s.precoAdulto}', '${s.custo}')">
+        ${s.nome} | ${s.moeda} ${s.precoAdulto} (Custo: ${s.custo})
+    </div>`;
+                        });
+
+                        document.getElementById("lista_servicos").innerHTML = html;
+                        document.getElementById("lista_servicos").style.display = "block";
+                    })
+                    .buscarServicos(texto);
+            }, 300);
+        }
+
+        function selecionarServico(nome, preco, custo) {
+            document.getElementById("servicio_buscar").value = nome;
+            document.getElementById("valor_unitario").value = preco;
+            document.getElementById("custo_unitario").value = custo;
+
+            document.getElementById("lista_servicos").innerHTML = "";
+            document.getElementById("lista_servicos").style.display = "none";
+            calcular();
+        }
+
+        // =======================================================================================
+        // =======================================================================================
+        // CARRINHO MULTIPLO (Shopping Cart)
+        // Bloco responsável por empilhar e remover serviços antes de enviá-los ao Backend.
+        // =======================================================================================
+
+        /**
+         * @var {Array} carrinho
+         * @description Matriz estática (RAM) na sessão do usuário atual. Limpa ao salvar.
+         */
+        var carrinho = [];
+
+        /**
+         * @function adicionarAoCarrinho
+         * @description Puxa os dados dos Inpunts visuais, injeta na variável 'carrinho',
+         * limpa a tela de digitação para o próximo preenchimento, e auto-renderiza os painéis visuais.
+         */
+        function adicionarAoCarrinho() {
+            var servico = document.getElementById("servicio_buscar").value;
+            var adultos = Number(document.getElementById("adultos").value);
+            var criancas = Number(document.getElementById("criancas").value);
+            var bebes = Number(document.getElementById("bebes").value);
+            var valor_unit = Number(document.getElementById("valor_unitario").value);
+            var custo_unit = Number(document.getElementById("custo_unitario").value);
+
+            if (!servico) {
+                alert("Selecione um serviço primeiro.");
+                return;
+            }
+            if ((adultos + criancas + bebes) <= 0) {
+                alert("A quantidade de pessoas no serviço deve ser maior que zero.");
+                return;
+            }
+
+            carrinho.push({
+                servico: servico,
+                adultos: adultos,
+                criancas: criancas,
+                bebes: bebes,
+                valor_unitario: valor_unit,
+                custo_unitario: custo_unit
+            });
+
+            // Limpeza rápida dos <inputs> para permitir que o agente adicione um novo item
+            document.getElementById("servicio_buscar").value = "";
+            document.getElementById("adultos").value = "0";
+            document.getElementById("criancas").value = "0";
+            document.getElementById("bebes").value = "0";
+            document.getElementById("valor_unitario").value = "";
+            document.getElementById("custo_unitario").value = "";
+
+            renderizarCarrinho();
+            calcular(); // Refaz o total da tela
+        }
+
+        /**
+         * @function editarNoCarrinho
+         * @param {number} index - A posição do item que está sendo editado na array (0..N)
+         * @description Devolve os dados deste serviço aos inputs para correção do digitador e destrói o index original.
+         */
+        function editarNoCarrinho(index) {
+            var item = carrinho[index];
+
+            // Popula os inputs de volta
+            document.getElementById("servicio_buscar").value = item.servico;
+            document.getElementById("adultos").value = item.adultos;
+            document.getElementById("criancas").value = item.criancas;
+            document.getElementById("bebes").value = item.bebes;
+            document.getElementById("valor_unitario").value = item.valor_unitario;
+            document.getElementById("custo_unitario").value = item.custo_unitario;
+
+            // Remove o item do carrinho para evitar duplicação (agora o usuário salva novamente)
+            carrinho.splice(index, 1);
+            renderizarCarrinho();
+            calcular();
+        }
+
+        function removerDoCarrinho(index) {
+            carrinho.splice(index, 1);
+            renderizarCarrinho();
+            calcular();
+        }
+
+        function renderizarCarrinho() {
+            var box = document.getElementById("carrinho_lista");
+            if (carrinho.length === 0) {
+                box.innerHTML = '<p style="text-align:center; color:#999; margin: 0;">O carrinho está vazio.</p>';
+                return;
+            }
+
+            var html = "";
+            carrinho.forEach(function (item, index) {
+                var sumPessoas = item.adultos + item.criancas + item.bebes;
+                var subtotal = sumPessoas * item.valor_unitario;
+                html += `
+                <div style="display:flex; justify-content:space-between; align-items: center; padding:5px 0; border-bottom:1px solid #eee;">
+                    <span style="flex:1;"><b>${item.servico}</b> (${sumPessoas} pax)</span>
+                    <span style="font-weight:bold;">$ ${subtotal.toFixed(2)}</span>
+                    <div style="display:flex;">
+                        <button type="button" onclick="editarNoCarrinho(${index})" style="background:#f39c12; margin-left: 10px; width: 25px; height: 25px; border-radius:50%; border:none; color:white; cursor:pointer; display:flex; justify-content:center; align-items:center;" title="Editar item">✏️</button>
+                        <button type="button" onclick="removerDoCarrinho(${index})" style="background:#e74c3c; margin-left: 5px; width: 25px; height: 25px; border-radius:50%; border:none; color:white; cursor:pointer; display:flex; justify-content:center; align-items:center;" title="Remover item">X</button>
+                    </div>
+                </div>`;
+            });
+            box.innerHTML = html;
+        }
+
+        // =======================================================================================
+        // CALCULAR (Motor de Soma Visual)
+        // Somatiza o carrinho inteiro * valor correspondente da moeda. Modifica a view de Lucro Bruto.
+        // =======================================================================================
+
+        function calcular() {
+            var totalBruto = 0;
+            var custoTotalLivres = 0;
+
+            // Ciclo que empilha todos os pax ($) dentro da variavel temporária
+            carrinho.forEach(function (item) {
+                var total_pessoas = item.adultos + item.criancas + item.bebes;
+                totalBruto += total_pessoas * item.valor_unitario;
+                custoTotalLivres += total_pessoas * item.custo_unitario;
+            });
+
+            var total = totalBruto;
+            var custo_total = custoTotalLivres;
+
+            // Abate dos Privilégios/Descontos Globais inseridos pela Gerência.
+            var desconto = Number(document.getElementById("desconto").value) || 0;
+            total = total - desconto;
+            if (total < 0) total = 0;
+
+            var lucro = total - custo_total;
+
+            var moedaSelected = document.getElementById("moneda").value;
+            var temCambioManual = document.getElementById("usar_cambio_manual").value === "SIM";
+            var taxaManual = Number(document.getElementById("taxa_manual").value) || 1;
+
+            var totalFinalExtenso = "Total: " + total + " " + moedaSelected;
+            if (temCambioManual) {
+                totalFinalExtenso += "<br>Total (Base Câmbio Manual de " + taxaManual + "): " + (total * taxaManual).toFixed(2);
+            }
+
+            document.getElementById("resultado").innerHTML =
+                totalFinalExtenso +
+                "<br>Custo Geral: " + custo_total +
+                "<br>Lucro Bruto Variável: " + lucro +
+                (desconto > 0 ? " <br><small style='color:green'>(Rateio de Desconto Aplicado: " + desconto + ")</small>" : "");
+        }
+
+        // ===============================
+        // GUARDAR VENTA (Transmissão para o Google Apps Script)
+        // ===============================
+
+        function guardar() {
+            if (carrinho.length === 0) {
+                alert("O carrinho está vazio! Adicione pelo menos um serviço.");
+                return;
+            }
+
+            // Trava o botão para impedir que o vendedor clique 2x na mesma venda por ansiedade
+            var btn = document.getElementById("btn_guardar");
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div> Guardando Múltiplos Itens...';
+
+            var totalCalc = 0;
+            carrinho.forEach(item => totalCalc += (item.valor_unitario * (item.adultos + item.criancas + item.bebes)));
+            var desc = Number(document.getElementById("desconto").value) || 0;
+            totalCalc = totalCalc - desc;
+
+            var datos = {
+                carrinho: carrinho, 
+                cliente_id: document.getElementById("cliente_id").value,
+                cliente: document.getElementById("cliente_buscar").value,
+                funcionario: document.getElementById("funcionario").value,
+                moeda: document.getElementById("moneda").value,
+                forma_pagamento: document.getElementById("forma_pagamento").value,
+                status: document.getElementById("status").value,
+                desconto: desc,
+                usar_cambio_manual: document.getElementById("usar_cambio_manual").value === "SIM",
+                taxa_manual: Number(document.getElementById("taxa_manual").value) || 1,
+                total: totalCalc > 0 ? totalCalc : 0
+            };
+
+            // Puxa o JSON Token do Cache do Navegador, enviando às escuras para o Backend certificar as permissões
+            var user = JSON.parse(localStorage.getItem("user") || "null");
+
+            google.script.run
+                .withSuccessHandler(function (idRetornada) {
+                    datos.idTransacao = idRetornada || "OFFLINE-000";
+                    localStorage.setItem("fatura_data", JSON.stringify(datos));
+
+                    btn.disabled = false;
+                    btn.innerHTML = 'Guardar Venta';
+
+                    // Reset da Tela após conclusão de Sucesso Http(200)
+                    carrinho = [];
+                    renderizarCarrinho();
+                    
+                    var linkFatura = BASE_URL + "?page=fatura";
+                    document.getElementById("resultado").innerHTML = `
+                        <div style="background: #e8f8f5; padding: 20px; border-radius: 8px; border-left: 5px solid #27ae60; margin-top: 15px; text-align: left;">
+                            <h3 style="color:#27ae60; margin-top:0;">✅ Venda Concluída!</h3>
+                            <p>A transação ID: <b>${datos.idTransacao.substring(0,8).toUpperCase()}</b> foi salva com sucesso no Google Sheets.</p>
+                            <a href="${linkFatura}" target="_blank" style="display:inline-block; padding:12px 25px; background:#2980b9; color:white; text-decoration:none; border-radius:5px; font-weight:bold; margin-top:10px; font-size:16px;">
+                                🖨️ ABRIR FATURA E VOUCHERS
+                            </a>
+                        </div>
+                    `;
+
+                    document.getElementById("cliente_buscar").value = "";
+                    document.getElementById("cliente_id").value = "";
+                })
+                .withFailureHandler(function (error) {
+                    alert("Error: " + error.message);
+                    btn.disabled = false;
+                    btn.innerHTML = 'Guardar Venta';
+                })
+                .guardarVenta(datos, user);
+        }
+
+    </script>
+
+    </script>
+
+</body>
+
+</html>

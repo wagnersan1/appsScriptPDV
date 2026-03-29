@@ -1,0 +1,181 @@
+<!--
+    =======================================================================================
+    ARQUIVO DO SISTEMA: dashboard.html
+    DESCRIÇÃO: Painel de Analytics (Resumo de Vendas e Caixa).
+    Apresenta dados globais se for Admin/Gerente, e dados próprios se for Vendedor.
+    =======================================================================================
+-->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <?!= include('style'); ?>
+    <?!= include('script'); ?>
+    <script src="https://www.gstatic.com/charts/loader.js"></script>
+    <style>
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .kpi { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); }
+        .chart { background: white; padding: 20px; margin-bottom: 20px; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>📊 Painel de Vendas e Caixa</h2>
+        <div class="user">👤 Carregando...</div>
+    </div>
+
+    <div class="container">
+        <div class="back" onclick="abrir('index')">⬅ Volver</div>
+
+        <!-- Filtros de Período -->
+        <div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+            <label style="font-weight:bold; color:#2c3e50;">Filtro de Período:</label>
+            <select id="filtroPeriodo" onchange="alterarPeriodo()" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
+                <option value="semana" selected>Esta Semana</option>
+                <option value="hoje">Hoje</option>
+                <option value="mes">Este Mês</option>
+                <option value="custom">Personalizado</option>
+            </select>
+            <input type="date" id="dataInicio" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc;" disabled>
+            <input type="date" id="dataFim" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc;" disabled>
+            <button onclick="aplicarFiltro()" style="padding: 10px 20px; background: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight:bold;">🔍 Filtrar</button>
+        </div>
+
+        <!-- KPIs -->
+        <div class="kpi-grid">
+            <div class="kpi" style="border-left: 5px solid #27ae60;">
+                <h3 style="color: #27ae60; margin-top: 0;">Total Vendas (Período)</h3>
+                <div id="kpiPeriodo" style="font-size: 24px; font-weight: bold;">...</div>
+            </div>
+            <div class="kpi" style="border-left: 5px solid #2980b9;">
+                <h3 style="color: #2980b9; margin-top: 0;">Qtd. Transações</h3>
+                <div id="kpiQtd" style="font-size: 24px; font-weight: bold;">...</div>
+            </div>
+            <div class="kpi" style="border-left: 5px solid #8e44ad;">
+                <h3 style="color: #8e44ad; margin-top: 0;">Lucro (Período)</h3>
+                <div id="kpiLucro" style="font-size: 24px; font-weight: bold;">...</div>
+            </div>
+            <div class="kpi" style="border-left: 5px solid #16a085;">
+                <h3 style="color: #16a085; margin-top: 0;">Caixa ARS</h3>
+                <div id="kajaARS" style="font-size: 24px; font-weight: bold;">...</div>
+            </div>
+            <div class="kpi" style="border-left: 5px solid #2c3e50;">
+                <h3 style="color: #2c3e50; margin-top: 0;">Caixa USD</h3>
+                <div id="kajaUSD" style="font-size: 24px; font-weight: bold;">...</div>
+            </div>
+            <div class="kpi" style="border-left: 5px solid #d35400;">
+                <h3 style="color: #d35400; margin-top: 0;">Caixa BRL</h3>
+                <div id="kajaBRL" style="font-size: 24px; font-weight: bold;">...</div>
+            </div>
+        </div>
+
+        <!-- GRAFICOS -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px;">
+            <div class="chart">
+                <h3 style="text-align:center; color:#2c3e50;">Ventas por vendedor</h3>
+                <div id="chartVendedores" style="height:300px"></div>
+            </div>
+            <div class="chart">
+                <h3 style="text-align:center; color:#2c3e50;">Ventas por servicio</h3>
+                <div id="chartServicios" style="height:300px"></div>
+            </div>
+            <div class="chart">
+                <h3 style="text-align:center; color:#2c3e50;">Ventas por moneda</h3>
+                <div id="chartMonedas" style="height:300px"></div>
+            </div>
+            <div class="chart">
+                <h3 style="text-align:center; color:#2c3e50;">Ventas por día</h3>
+                <div id="chartDias" style="height:300px"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var user = JSON.parse(localStorage.getItem("user") || "null");
+        if (user && user.nome) {
+            document.querySelector(".user").innerHTML = "👤 " + user.nome + " (" + (user.funcao || "Visitante") + ")";
+        }
+
+        google.charts.load('current', { packages: ['corechart'] });
+        google.charts.setOnLoadCallback(configurarDatasIniciais);
+
+        function configurarDatasIniciais() {
+            alterarPeriodo();
+            aplicarFiltro();
+        }
+
+        function alterarPeriodo() {
+            var tipo = document.getElementById("filtroPeriodo").value;
+            var inpIn = document.getElementById("dataInicio");
+            var inpFim = document.getElementById("dataFim");
+            var hoje = new Date();
+            if (tipo === "custom") {
+                inpIn.disabled = false;
+                inpFim.disabled = false;
+                return;
+            }
+            inpIn.disabled = true;
+            inpFim.disabled = true;
+            var dtFim = new Date(hoje);
+            var dtIn = new Date(hoje);
+            if (tipo === "semana") {
+                dtIn.setDate(hoje.getDate() - 7);
+            } else if (tipo === "mes") {
+                dtIn.setDate(1); 
+            }
+            var isoIn = dtIn.getFullYear() + "-" + String(dtIn.getMonth()+1).padStart(2,'0') + "-" + String(dtIn.getDate()).padStart(2,'0');
+            var isoFim = dtFim.getFullYear() + "-" + String(dtFim.getMonth()+1).padStart(2,'0') + "-" + String(dtFim.getDate()).padStart(2,'0');
+            inpIn.value = isoIn;
+            inpFim.value = isoFim;
+        }
+
+        function aplicarFiltro() {
+            var filtro = {
+                inicio: document.getElementById("dataInicio").value,
+                fim: document.getElementById("dataFim").value
+            };
+
+            document.getElementById("kpiPeriodo").innerHTML = "...";
+            document.getElementById("kpiQtd").innerHTML = "...";
+            document.getElementById("kpiLucro").innerHTML = "...";
+
+            var userStr = localStorage.getItem("user") || "null";
+
+            google.script.run
+                .withSuccessHandler(function (d) {
+                    document.getElementById("kpiPeriodo").innerHTML = "$ " + d.totalPeriodo.toFixed(2);
+                    document.getElementById("kpiQtd").innerHTML = d.qtdVendasPeriodo;
+                    document.getElementById("kpiLucro").innerHTML = "$ " + d.lucroPeriodo.toFixed(2);
+                    
+                    document.getElementById("kajaARS").innerHTML = "$ " + (d.cajaARS || 0).toFixed(2);
+                    document.getElementById("kajaUSD").innerHTML = "U$ " + (d.cajaUSD || 0).toFixed(2);
+                    document.getElementById("kajaBRL").innerHTML = "R$ " + (d.cajaBRL || 0).toFixed(2);
+
+                    crearGrafico("chartVendedores", d.vendedores.map(v => [v.nome, v.total]), "ARS x Vendedor");
+                    crearGrafico("chartServicios", d.servicios, "ARS x Serviço");
+                    crearPie("chartMonedas", d.monedas, "Volume por Moeda");
+                    crearGrafico("chartDias", d.ventasPorDia, "ARS x Dia");
+                })
+                .getDashboardEmpresa(userStr, filtro);
+        }
+
+        function crearGrafico(id, data, title) {
+            var dt = new google.visualization.DataTable();
+            dt.addColumn('string', 'Item');
+            dt.addColumn('number', 'Valor');
+            data.forEach(r => dt.addRow(r));
+            var chart = new google.visualization.ColumnChart(document.getElementById(id));
+            chart.draw(dt, { title: title, colors: ['#2980b9'], legend: { position: "none" }, animation:{ startup: true, duration: 800 } });
+        }
+
+        function crearPie(id, data, title) {
+            var dt = new google.visualization.DataTable();
+            dt.addColumn('string', 'Item');
+            dt.addColumn('number', 'Valor');
+            data.forEach(r => dt.addRow(r));
+            var chart = new google.visualization.PieChart(document.getElementById(id));
+            chart.draw(dt, { title: title, pieHole: 0.4, colors: ['#27ae60', '#f39c12', '#8e44ad', '#e74c3c'], animation:{ startup: true, duration: 800 } });
+        }
+    </script>
+</body>
+</html>

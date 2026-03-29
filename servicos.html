@@ -1,0 +1,73 @@
+<!--
+    =======================================================================================
+    ARQUIVO DO SISTEMA: serviço.html
+    DESCRIÇÃO: Módulo de Catálogo de Serviços/Produtos.
+    Lista todos os pacotes/passeios disponíveis para venda, formatando a visualização dos fornecedores e custos.
+    =======================================================================================
+-->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <title>Serviços - PDV Turismo</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <?!= include('style'); ?>
+    <?!= include('script'); ?>
+</head>
+<body>
+
+<div class="header">
+  <h2>🌎 SISTEMA PDV TURISMO</h2>
+  <div class="user">
+    👤 <span id="userNome">Cargando...</span> |
+    <span class="logout" onclick="logout()">Sair</span>
+  </div>
+  <div>
+    <button class="btn-voltar" onclick="abrir('index')">⬅️ Voltar</button>
+  </div>
+</div>
+
+
+<div class="container">
+  <h3>Lista de Serviços Disponíveis</h3>
+
+
+  <table border="1" style="width:100%; border-collapse: collapse; background: white;">
+    <thead style="background: #2c3e50; color: white;">
+      <tr>
+        <th>Serviço</th>
+        <th>Categoria</th>
+        <th>Preço Adulto</th>
+        <th>Moeda</th>
+        <th>Fornecedor</th>
+      </tr>
+    </thead>
+    <tbody id="listaServicos">
+      <!-- O JavaScript vai preencher aqui -->
+    </tbody>
+  </table>
+</div>
+
+<script>
+  function carregar() {
+    google.script.run
+      .withSuccessHandler(function (dados) {
+        var html = "";
+        dados.forEach(function (s) {
+          html += "<tr>" +
+            "<td>" + s.nome + "</td>" +
+            "<td>" + s.categoria + "</td>" +
+            "<td>" + s.precoAdulto + "</td>" +
+            "<td>" + s.moeda + "</td>" +
+            "<td>" + s.fornecedor + "</td>" +
+            "</tr>";
+        });
+        document.getElementById("listaServicos").innerHTML = html;
+      })
+      .getServicos();
+  }
+  carregar();
+</script>
+
+</body>
+</html>

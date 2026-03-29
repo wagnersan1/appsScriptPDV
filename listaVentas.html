@@ -1,0 +1,185 @@
+<!--
+    =======================================================================================
+    ARQUIVO DO SISTEMA: listaVentas.html
+    DESCRIÇÃO: Relatório Tabular de Vendas (Histórico).
+    Exibe uma tabela contendo todas as transações extraídas diretamente do Google Sheets via getVentas().
+    Útil para auditoria rápida e fechamentos simples de valores globais das vendas efetuadas.
+    =======================================================================================
+-->
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <?!= include('style'); ?>
+
+    <?!= include('script'); ?>
+
+    <style>
+        .table-box {
+
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+
+        }
+
+        table {
+
+            width: 100%;
+            border-collapse: collapse;
+
+        }
+
+        th {
+
+            background: #2c3e50;
+            color: white;
+            padding: 10px;
+            text-align: left;
+
+        }
+
+        td {
+
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+
+        }
+
+        tr:hover {
+
+            background: #f5f5f5;
+
+        }
+
+        .total-box {
+
+            margin-top: 20px;
+            padding: 15px;
+            background: #ecf0f1;
+            border-radius: 10px;
+            font-size: 18px;
+
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div class="header">
+
+        <h2>📊 Lista de Ventas</h2>
+
+        <div class="user">
+            👤 Admin
+        </div>
+
+    </div>
+
+    <div class="container">
+
+        <div class="back" onclick="abrir('index')">
+            ⬅ Volver al Dashboard
+        </div>
+
+        <div class="table-box">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>Fecha</th>
+                        <th>Funcionario</th>
+                        <th>Cliente</th>
+                        <th>Servicio</th>
+                        <th>Pax</th>
+                        <th>Total</th>
+                        <th>Moneda</th>
+                        <th>Lucro</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody id="tablaVentas">
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        <div class="total-box" id="totales">
+
+            Cargando...
+
+        </div>
+
+    </div>
+
+    <script>
+
+        function cargarVentas() {
+
+            google.script.run
+                .withSuccessHandler(function (data) {
+
+                    var html = "";
+
+                    var totalARS = 0;
+                    var totalUSD = 0;
+                    var totalBRL = 0;
+                    var lucroTotal = 0;
+
+                    data.forEach(function (v) {
+
+                        html += "<tr>";
+
+                        html += "<td>" + v.fecha + "</td>";
+                        html += "<td>" + v.funcionario + "</td>";
+                        html += "<td>" + v.cliente + "</td>";
+                        html += "<td>" + v.servico + "</td>";
+                        html += "<td>" + v.quantidade + "</td>";
+                        html += "<td>" + v.total + "</td>";
+                        html += "<td>" + v.moeda + "</td>";
+                        html += "<td>" + v.lucro + "</td>";
+
+                        html += "</tr>";
+
+                        if (v.moeda == "ARS") totalARS += Number(v.total);
+                        if (v.moeda == "USD") totalUSD += Number(v.total);
+                        if (v.moeda == "BRL") totalBRL += Number(v.total);
+
+                        lucroTotal += Number(v.lucro);
+
+                    });
+
+                    document.getElementById("tablaVentas").innerHTML = html;
+
+                    document.getElementById("totales").innerHTML =
+                        `
+Total ARS: ${totalARS.toFixed(2)}<br>
+Total USD: ${totalUSD.toFixed(2)}<br>
+Total BRL: ${totalBRL.toFixed(2)}<br>
+Lucro total: ${lucroTotal.toFixed(2)}
+`;
+
+                })
+                .getVentas();
+
+        }
+
+        cargarVentas();
+
+    </script>
+
+</body>
+
+</html>
