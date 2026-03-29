@@ -243,16 +243,15 @@ return result;
 // DASHBOARD DATA
 // ===============================
 
-function getDashboardData(){
+function getDashboardData(usuarioStr, filtroDatas){
 
-var empresa =
-getDashboardEmpresa();
+var empresa = getDashboardEmpresa(usuarioStr, filtroDatas);
 
 return {
 
-totalHoy:empresa.totalHoje,
-totalMes:empresa.totalMes,
-lucroTotal:empresa.totalLucro,
+totalPeriodo:empresa.totalPeriodo,
+lucroPeriodo:empresa.lucroPeriodo,
+qtdVendasPeriodo:empresa.qtdVendasPeriodo,
 
 cajaARS:empresa.cajaARS,
 cajaUSD:empresa.cajaUSD,
@@ -316,12 +315,10 @@ return result;
 // FUNCIONARIOS
 // ===============================
 
-function getFuncionarios(){
+function getFuncionarios(wb){
 
-var sheet =
-SpreadsheetApp
-.openById(SPREADSHEET_ID)
-.getSheetByName("FUNCIONARIOS");
+var spreadsheet = wb || SpreadsheetApp.openById(SPREADSHEET_ID);
+var sheet = spreadsheet.getSheetByName("FUNCIONARIOS");
 
 var data =
 sheet.getDataRange().getValues();
@@ -409,128 +406,178 @@ return result;
  * @returns {boolean} Retorna 'true' para confirmar a inserção bem-sucedida.
  * =======================================================================================
  */
-function guardarVenta(d, usuario){
-  // 1. SEGURANÇA: Verifica se o usuário tem permissão
-  if(!usuario || !verificarPermissao(usuario.funcao, "crear")){
-    throw new Error("Usuario no autenticado o sin permiso.");
+function guardarVenta(d, usuario, isTest){
+  // 1. LOCK PARA EVITAR CONCORRÊNCIA E DOUBLE-CLICK
+  var lock = LockService.getScriptLock();
+  
+  // Tenta adquirir o Lock em até 10 segundos
+  if (!lock.tryLock(10000)) { 
+    throw new Error("El sistema está procesando otra venta. Intente nuevamente en unos segundos.");
   }
 
-  var carrinho = d.carrinho;
-  if (!carrinho || carrinho.length === 0) {
-    throw new Error("El carrito está vacío.");
-  }
-
-  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("Ventas");
-  var idTransacao = Utilities.getUuid(); // Um único ID agrupa todas as linhas da mesma Venda
-  
-  // Buscar bases de dados reais
-  var servicosDB = getServicos();
-  var funcionariosDB = getFuncionarios();
-  var funcReal = funcionariosDB.find(function(f) { return f.nome === usuario.nome; });
-  var comissao_percent = funcReal ? (Number(funcReal.comissao) || 0) : 0; 
-  
-  var totalBrutoOriginalTodaVenda = 0;
-  var custoTotalTodaVenda = 0;
-
-  // 1º Ciclo: Validar todos os itens e somar totais brutos para cálculo futuro
-  for (var i = 0; i < carrinho.length; i++) {
-    var item = carrinho[i];
-    var quantidade = Number(item.adultos) + Number(item.criancas) + Number(item.bebes);
-    if(quantidade <= 0) throw new Error("La cantidad debe ser mayor a 0 para el servicio " + item.servico);
-    
-    var servicoReal = servicosDB.find(function(s) { return s.nome === item.servico; });
-    if (!servicoReal) throw new Error("Servicio no encontrado en BD: " + item.servico);
-    
-    var valor_unitario = Number(servicoReal.precoAdulto) || 0;
-    var custo_unitario = Number(servicoReal.custo) || 0;
-    
-    item._valor_unitario_real = valor_unitario;
-    item._custo_unitario_real = custo_unitario;
-    item._quantidade = quantidade;
-    
-    var totalItem = quantidade * valor_unitario;
-    var custoItem = quantidade * custo_unitario;
-    
-    totalBrutoOriginalTodaVenda += totalItem;
-    custoTotalTodaVenda += custoItem;
-  }
-  
-  // 2. PRIVILÉGIOS DE GERÊNCIA (CO, ADMIN E GERENTE) - Desconto Global
-  var descontoGlobal = 0;
-  var cambioGeral = d.moeda === 'USD' ? 1200 : (d.moeda === 'BRL' ? 240 : 1);
-
-  if (usuario.funcao === "ADMIN" || usuario.funcao === "GERENTE" || usuario.funcao === "CO") {
-    if (d.desconto && Number(d.desconto) > 0) {
-      descontoGlobal = Number(d.desconto); 
+  try {
+    if(!usuario || !verificarPermissao(usuario.funcao, "crear")){
+      throw new Error("Usuario no autenticado o sin permiso.");
     }
-    if (d.usar_cambio_manual && Number(d.taxa_manual) > 0) {
-      cambioGeral = Number(d.taxa_manual); 
+
+    var carrinho = d.carrinho;
+    if (!carrinho || carrinho.length === 0) {
+      throw new Error("El carrito está vacío.");
     }
-  }
-
-  // Previne expurgos de desconto maiores que a venda em si
-  if (descontoGlobal > totalBrutoOriginalTodaVenda) descontoGlobal = totalBrutoOriginalTodaVenda;
-  
-  var totalFinalPago = totalBrutoOriginalTodaVenda - descontoGlobal; // O real final
-  var descontoRestante = descontoGlobal; // Vamos descontar nas linhas progressivamente
-
-  // 2º Ciclo: Inserir Linhas na Aba Ventas (Uma linha por serviço)
-  for (var i = 0; i < carrinho.length; i++) {
-    var item = carrinho[i];
     
-    var totalItemOriginal = item._quantidade * item._valor_unitario_real;
-    var custoTotalItem = item._quantidade * item._custo_unitario_real;
+    // 2. OTIMIZAÇÃO: Abrir a planilha apenas 1 vez para todo o processo
+    var wb = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheet = wb.getSheetByName("Ventas"); // Requer aba 'Ventas'
     
-    var descontoNesteItem = 0;
-    if (descontoRestante > 0) {
-      if (descontoRestante >= totalItemOriginal) {
-        descontoNesteItem = totalItemOriginal;
-        descontoRestante -= totalItemOriginal;
-      } else {
-        descontoNesteItem = descontoRestante;
-        descontoRestante = 0;
+    var idTransacao = Utilities.getUuid(); 
+    
+    // Passar `wb` evita I/O duplicado no banco
+    var servicosDB = getServicos(wb);
+    var funcionariosDB = getFuncionarios(wb);
+    
+    var funcReal = funcionariosDB.find(function(f) { return f.nome === usuario.nome; });
+    var rawComissao = funcReal ? String(funcReal.comissao).replace('%', '').replace(',', '.') : "0";
+    var comissao_percent = Number(rawComissao) || 0; 
+    
+    var totalBrutoOriginalTodaVenda = 0;
+    var custoTotalTodaVenda = 0;
+
+    // 1º Ciclo: Validar todos os itens e somar totais brutos para cálculo futuro
+    for (var i = 0; i < carrinho.length; i++) {
+        var item = carrinho[i];
+        
+        var qtdAdulto = Number(item.adultos) || 0;
+        var qtdCrianca = Number(item.criancas) || 0;
+        var qtdBebe = Number(item.bebes) || 0;
+        
+        var itemTotalQuantidade = qtdAdulto + qtdCrianca + qtdBebe;
+        if(itemTotalQuantidade <= 0) throw new Error("La cantidad debe ser mayor a 0 para el servicio " + item.servico);
+        
+        var servicoReal = servicosDB.find(function(s) { return s.nome === item.servico; });
+        if (!servicoReal) throw new Error("Servicio no encontrado en BD: " + item.servico);
+        
+        var valAdulto = Number(servicoReal.precoAdulto) || 0;
+        var valCrianca = Number(servicoReal.precoCrianca) || 0;
+        var valBebe = Number(servicoReal.precoBebe) || 0;
+        
+        var custo_unitario = Number(servicoReal.custo) || 0;
+        
+        // O item agora tem seu total original gerado a partir de faixas etárias reais
+        var totalItemOriginal = (qtdAdulto * valAdulto) + (qtdCrianca * valCrianca) + (qtdBebe * valBebe);
+        var custoTotalItem = itemTotalQuantidade * custo_unitario;
+        
+        item._total_bruto_calculado = totalItemOriginal;
+        item._custo_unitario_real = custo_unitario;
+        item._quantidade = itemTotalQuantidade;
+        
+        totalBrutoOriginalTodaVenda += totalItemOriginal;
+        custoTotalTodaVenda += custoTotalItem;
+    }
+    
+    // Câmbio puxado Dinamicamente do banco!
+    var cambioGeral = getTaxaCambio(d.moeda, wb);
+
+    var descontoGlobal = 0;
+    if (usuario.funcao === "ADMIN" || usuario.funcao === "GERENTE" || usuario.funcao === "CO") {
+      if (d.desconto && Number(d.desconto) > 0) {
+        descontoGlobal = Number(d.desconto); 
+        if (!isTest) {
+          registrarAuditoria(wb, usuario.nome, "DESCONTO APLICADO", "Concedeu desconto total de " + descontoGlobal + " na venda.", idTransacao);
+        }
+      }
+      if (d.usar_cambio_manual && Number(d.taxa_manual) > 0) {
+        cambioGeral = Number(d.taxa_manual); 
+        if (!isTest) {
+          registrarAuditoria(wb, usuario.nome, "CAMBIO FORÇADO", "Utilizou Câmbio Manual de " + cambioGeral + " (" + d.moeda + ") ao invés da taxa na Aba.", idTransacao);
+        }
       }
     }
+
+    // Previne expurgos de desconto maiores que a venda em si
+    if (descontoGlobal > totalBrutoOriginalTodaVenda) descontoGlobal = totalBrutoOriginalTodaVenda;
     
-    var totalCobradoItem = totalItemOriginal - descontoNesteItem;
-    var lucroDesteItem = totalCobradoItem - custoTotalItem;
-    var comissaoDesteItem = totalCobradoItem * (comissao_percent / 100);
-    var totalARS_Item = totalCobradoItem * cambioGeral;
+    var totalFinalPago = totalBrutoOriginalTodaVenda - descontoGlobal; 
+    var descontoRestante = descontoGlobal; 
 
-    sheet.appendRow([
-      idTransacao,          // A (0) ID VENDA
-      new Date(),           // B (1) DATA
-      usuario.nome,         // C (2) FUNCIONARIO
-      d.cliente_id,         // D (3) CLIENTE
-      item.servico,         // E (4) SERVICO
-      Number(item.adultos), // F (5) ADULTOS
-      Number(item.criancas),// G (6) CRIANCAS
-      Number(item.bebes),   // H (7) BEBES
-      item._quantidade,     // I (8) QUANTIDADE
-      d.moeda,              // J (9) MOEDA
-      item._valor_unitario_real, // K (10) VALOR UNITARIO
-      totalCobradoItem,     // L (11) VALOR TOTAL C/ DESCONTO
-      cambioGeral,          // M (12) CAMBIO
-      totalARS_Item,        // N (13) TOTAL ARS
-      custoTotalItem,       // O (14) CUSTO TOTAL
-      lucroDesteItem,       // P (15) LUCRO
-      usuario.nome,         // Q (16) RESPONSAVEL DE VENDA
-      comissaoDesteItem,    // R (17) COMISSAO
-      d.forma_pagamento,    // S (18) FORMA PAGAMENTO
-      d.status              // T (19) STATUS
-    ]);
+    // 2º Ciclo: Inserir Linhas na Aba Ventas (Uma linha por serviço)
+    for (var i = 0; i < carrinho.length; i++) {
+      var item = carrinho[i];
+      
+      var totalItemOriginal = item._total_bruto_calculado;
+      var custoTotalItem = item._quantidade * item._custo_unitario_real;
+      
+      var descontoNesteItem = 0;
+      if (descontoRestante > 0) {
+        if (descontoRestante >= totalItemOriginal) {
+          descontoNesteItem = totalItemOriginal;
+          descontoRestante -= totalItemOriginal;
+        } else {
+          descontoNesteItem = descontoRestante;
+          descontoRestante = 0;
+        }
+      }
+      
+      var totalCobradoItem = totalItemOriginal - descontoNesteItem;
+      var lucroDesteItem = totalCobradoItem - custoTotalItem;
+      var comissaoDesteItem = totalCobradoItem * (comissao_percent / 100);
+      var totalARS_Item = totalCobradoItem * cambioGeral;
+
+      if (!isTest) {
+        sheet.appendRow([
+          idTransacao,          // A (0) ID VENDA
+          new Date(),           // B (1) DATA
+          usuario.nome,         // C (2) FUNCIONARIO
+          d.cliente_id,         // D (3) CLIENTE
+          item.servico,         // E (4) SERVICO
+          Number(item.adultos), // F (5) ADULTOS
+          Number(item.criancas),// G (6) CRIANCAS
+          Number(item.bebes),   // H (7) BEBES
+          item._quantidade,     // I (8) QUANTIDADE
+          d.moeda,              // J (9) MOEDA
+          (totalItemOriginal / item._quantidade), // K (10) VALOR UNITARIO PONDERADO
+          totalCobradoItem,     // L (11) VALOR TOTAL C/ DESCONTO
+          cambioGeral,          // M (12) CAMBIO
+          totalARS_Item,        // N (13) TOTAL ARS
+          custoTotalItem,       // O (14) CUSTO TOTAL
+          lucroDesteItem,       // P (15) LUCRO
+          usuario.nome,         // Q (16) RESPONSAVEL DE VENDA
+          comissaoDesteItem,    // R (17) COMISSAO
+          d.forma_pagamento,    // S (18) FORMA PAGAMENTO
+          d.status              // T (19) STATUS
+        ]);
+      }
+    }
+
+    // 3. Registra Caixa aglutinado usando a mesma Instância `wb`
+    if (!isTest) {
+      registrarMovimiento({
+          tipo: "ENTRADA",
+          descripcion: "Venta Múltiple (" + carrinho.length + " serviços) ID: " + idTransacao.substring(0,8),
+          valor: totalFinalPago,
+          moneda: d.moeda
+      }, wb);
+    } else {
+      // Devolve relatório financeiro detalhado para os Assertions de QA
+      return {
+        success: true,
+        idSimulado: idTransacao,
+        totalFinalPago: totalFinalPago,
+        lucroAproximado: (totalFinalPago - custoTotalTodaVenda),
+        comissaoPercentAplicada: comissao_percent,
+        cambioAplicado: cambioGeral
+      };
+    }
+
+    return idTransacao;
+    
+  } catch (err) {
+    throw new Error(err.message);
+  } finally {
+    // 4. OBRIGATÓRIO: Destranca a porta
+    lock.releaseLock();
   }
-
-  // 3. Registra Caixa aglutinado
-  registrarMovimiento({
-    tipo: "ENTRADA",
-    descripcion: "Venta Múltiple (" + carrinho.length + " serviços) ID: " + idTransacao.substring(0,8),
-    valor: totalFinalPago,
-    moneda: d.moeda
-  });
-
-  return idTransacao;
 }
+
 
 
 
@@ -538,12 +585,10 @@ function guardarVenta(d, usuario){
 // CAJA
 // ===============================
 
-function getUltimoSaldo(){
+function getUltimoSaldo(wb){
 
-var sheet =
-SpreadsheetApp
-.openById(SPREADSHEET_ID)
-.getSheetByName("CAJA");
+var spreadsheet = wb || SpreadsheetApp.openById(SPREADSHEET_ID);
+var sheet = spreadsheet.getSheetByName("CAJA");
 
 var data =
 sheet.getDataRange().getValues();
@@ -567,15 +612,12 @@ return saldo;
 
 
 
-function registrarMovimiento(d){
+function registrarMovimiento(d, wb){
 
-var sheet =
-SpreadsheetApp
-.openById(SPREADSHEET_ID)
-.getSheetByName("CAJA");
+var spreadsheet = wb || SpreadsheetApp.openById(SPREADSHEET_ID);
+var sheet = spreadsheet.getSheetByName("CAJA");
 
-var saldo =
-getUltimoSaldo();
+var saldo = getUltimoSaldo(spreadsheet);
 
 var valor =
 Number(d.valor);
@@ -645,8 +687,9 @@ permisos[usuarioFuncao].includes(acao);
 // ===============================
 // FUNÇÃO BUSCAR SERVIÇOS
 // ===============================
-function getServicos() {
-  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("SERVICOS");
+function getServicos(wb) {
+  var spreadsheet = wb || SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = spreadsheet.getSheetByName("SERVICOS");
   var data = sheet.getDataRange().getValues();
   var lista = [];
 
@@ -707,3 +750,61 @@ function salvarFornecedor(dados) {
   ]);
   return "Fornecedor salvo com sucesso!";
 }
+
+// ===============================
+// FUNÇÃO PARA BUSCAR CÂMBIO
+// ===============================
+function getTaxaCambio(moedaDesejada, wb) {
+  if (moedaDesejada === "ARS" || !moedaDesejada) return 1;
+
+  var spreadsheet = wb || SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = spreadsheet.getSheetByName("CAMBIO");
+  
+  if (!sheet) {
+    if (moedaDesejada === "USD") return 1200; 
+    if (moedaDesejada === "BRL") return 240;
+    return 1;
+  }
+  
+  var data = sheet.getDataRange().getValues();
+
+  for (var i = 1; i < data.length; i++) {
+    var moedaPlanilha = data[i][0] ? data[i][0].toString().toUpperCase() : "";
+    var taxa = Number(data[i][1]) || 0;
+    
+    if (moedaPlanilha === moedaDesejada.toUpperCase()) {
+      return taxa;
+    }
+  }
+  
+  // Taxa de segurança caso a moeda não esteja na aba
+  if (moedaDesejada === "USD") return 1200; 
+  if (moedaDesejada === "BRL") return 240;
+  
+  return 1;
+}
+
+// ===============================
+// AUDITORIA (LOG DE ATIVIDADES SENSÍVEIS)
+// ===============================
+function registrarAuditoria(wb, usuarioNome, acao, detalhes, idReferencia) {
+  try {
+    var spreadsheet = wb || SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheet = spreadsheet.getSheetByName("AUDITORIA_LOG");
+    
+    // So procede se a Aba AUDITORIA_LOG existir na sua planilha
+    if (sheet) {
+      sheet.appendRow([
+        new Date(),       // A: DATA do Fato
+        usuarioNome,      // B: QUEM Vendeu (Responsavel)
+        acao,             // C: O QUE FEZ (DESCONTO, CAMBIO MANUAL, CANCELAMENTO...)
+        detalhes,         // D: DESCRIÇÃO E VALORES
+        idReferencia      // E: ID DA VENDA RELACIONADA
+      ]);
+    }
+  } catch (e) {
+    // Falhas do bot de auditoria não devem travar a venda do cliente
+    console.error("Erro interno no registro de auditoria: " + e.message);
+  }
+}
+

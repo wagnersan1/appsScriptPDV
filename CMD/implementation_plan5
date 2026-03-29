@@ -1,0 +1,24 @@
+# Plano de Implementação: Trilha de Auditoria e Logs
+
+Este plano descreve como vamos implementar o radar de segurança sugerido na Auditoria do PDV. O objetivo é rastrear alterações sensíveis (descontos e câmbios forçados por Gerentes).
+
+## User Review Required
+
+> [!CAUTION]
+> A implementação abaixo começará a lançar linhas de dados em uma aba oculta de Logs. Para que isso funcione sem erros, **VOCÊ PRECISARÁ CRIAR MANUALMENTE** uma aba/página no seu arquivo do Google Sheets real chamada `AUDITORIA_LOG`. Se concordar com a estrutura, eu crio o código para isso acontecer!
+
+## Proposed Changes
+
+### [MODIFY] `código.gs`
+
+1. **Nova Função: `registrarAuditoria(usuarioNome, acao, detalhes, idReferencia, wb)`**
+   - Esta será a função master responsável por gravar as intrusões de sistema na aba de Planilha.
+   - Ela abrirá a nova aba referenciando as colunas: `[Data/Hora, Usuário, Ação (ex: DESCONTO), Detalhes, ID Venda]`.
+
+2. **Edição do motor de vendas (`guardarVenta`)**
+   - Na linha em que o sistema detecta que o gerente liberou o `d.desconto` ou `d.usar_cambio_manual`, atalhos condicionais chamarão a nova função de Auditoria silenciosamente por trás dos panos.
+   - Será adicionado apenas no bloco de execução autêntico (fora do *testMode* dry-run).
+
+## Open Questions
+- Você quer que eu apenas chame a função da aba "AUDITORIA_LOG", ou prefere outro nome (ex: "LOGS", "SISTEMA")? O padrão que irei usar será `AUDITORIA_LOG`.
+- Apenas me responda com "Ok" se estiver disposto a criar essa aba de logs lá no seu painel do Google Sheets. Assim que aprovar eu monto as linhas de código.
