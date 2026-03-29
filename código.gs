@@ -6,47 +6,37 @@ var SPREADSHEET_ID = "1cYJSUihp-olsTCX5jdk51sgSidbBtiHEHU7MKjcaucg";
 
 
 // ===============================
-// ROUTER
+// ROUTER PRINCIPAL
 // ===============================
 function doGet(e) {
-  // Verificamos si 'e' y 'e.parameter' existen, si no, usamos 'login' por defecto
   var page = (e && e.parameter && e.parameter.page) ? e.parameter.page : "login";
   
   try {
-    return HtmlService.createTemplateFromFile(page)
-      .evaluate()
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-      .setTitle("Sistema PDV Turismo");
+    var template = HtmlService.createTemplateFromFile(page);
+    var output = template.evaluate();
+    
+    output.addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    output.setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    output.setTitle("Travel Santur PDV");
+    
+    return output;
   } catch (err) {
-    // Retornamos o erro real para o desenvolvedor conseguir debugar
-    return HtmlService.createHtmlOutput("Erro Crítico no Google Apps Script: " + err.message);
+    return HtmlService.createHtmlOutput("Erro no carregamento: " + err.message);
   }
 }
-// function doGet(e){
 
-// var page =
-// e && e.parameter && e.parameter.page
-// ? e.parameter.page
-// : "login";
-
-// return HtmlService
-// .createTemplateFromFile(page)
-// .evaluate()
-// .setTitle("Sistema PDV Turismo");
-
-// }
-
-
-// incluir html
+// ===============================
+// INCLUIR HTML, CSS E JS
+// ===============================
 function include(filename){
-
-return HtmlService
-.createTemplateFromFile(filename)
-.evaluate()
-.getContent();
-
+  // Usa o createTemplateFromFile para permitir o evaluate()
+  return HtmlService.createTemplateFromFile(filename).evaluate().getContent();
 }
+
+
+
+
+
 
 
 // ===============================
@@ -85,7 +75,6 @@ function login(user, password) {
 // ===============================
 // DASHBOARD EMPRESA
 // ===============================
-
 function getDashboardEmpresa(usuarioStr, filtroDatas) {
   var usuario = null;
   if(usuarioStr) {
@@ -110,7 +99,8 @@ function getDashboardEmpresa(usuarioStr, filtroDatas) {
     }
   }
 
-  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("Ventas");
+  // CORREÇÃO AQUI: Mudado de "Ventas" para "VENDAS"
+  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("VENDAS");
   var data = sheet.getDataRange().getValues();
 
   var totalPeriodo = 0;
@@ -199,40 +189,33 @@ function getDashboardEmpresa(usuarioStr, filtroDatas) {
 
 
 
+
 // ===============================
 // DASHBOARD VENDEDORES
 // ===============================
 
 function getDashboardVendedores(){
 
-var sheet =
-SpreadsheetApp
-.openById(SPREADSHEET_ID)
-.getSheetByName("Ventas");
+// CORREÇÃO AQUI: Mudado de "Ventas" para "VENDAS"
+var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("VENDAS");
 
-var data =
-sheet.getDataRange().getValues();
+var data = sheet.getDataRange().getValues();
 
 var vendedores={};
 
 for(var i=1;i<data.length;i++){
 
-var nome =
-data[i][2];
+var nome = data[i][2];
 
-var total =
-Number(data[i][13] || 0); // Coluna N (Total ARS)
+var total = Number(data[i][13] || 0); // Coluna N (Total ARS)
 
-var comissao =
-Number(data[i][17] || 0); // Coluna R (Comissao)
+var comissao = Number(data[i][17] || 0); // Coluna R (Comissao)
 
 if(!vendedores[nome]){
-
 vendedores[nome]={
 total:0,
 comissao:0
 };
-
 }
 
 vendedores[nome].total += total;
@@ -243,15 +226,11 @@ vendedores[nome].comissao += comissao;
 var result=[];
 
 for(var v in vendedores){
-
 result.push({
-
 nome:v,
 total:vendedores[v].total,
 comissao:vendedores[v].comissao
-
 });
-
 }
 
 return result;
@@ -728,5 +707,3 @@ function salvarFornecedor(dados) {
   ]);
   return "Fornecedor salvo com sucesso!";
 }
-
-
