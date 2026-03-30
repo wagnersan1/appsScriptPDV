@@ -427,7 +427,7 @@ function guardarVenta(d, usuario, isTest){
     
     // 2. OTIMIZAÇÃO: Abrir a planilha apenas 1 vez para todo o processo
     var wb = SpreadsheetApp.openById(SPREADSHEET_ID);
-    var sheet = wb.getSheetByName("Ventas"); // Requer aba 'Ventas'
+    var sheet = wb.getSheetByName("VENDAS"); // Requer aba 'VENDAS'
     
     var idTransacao = Utilities.getUuid(); 
     
@@ -704,7 +704,9 @@ function getServicos(wb) {
       categoria: data[i][3],   // CATEGORIA
       precoAdulto: data[i][4], // PRECO_VENDA_ADULTO
       precoCrianca: data[i][5],// PRECO_VENDA_CRIAZA
+      precoBebe: data[i][6],   // INCLUIR O BEBÊ (índice 6)
       moeda: data[i][7],       // MOEDA
+      custo: data[i][8],       // INCLUIR O CUSTO (índice 8)
       fornecedor: data[i][9],  // FORNECEDOR
       ativo: data[i][12]       // ATIVO
     });
