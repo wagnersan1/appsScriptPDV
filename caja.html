@@ -13,9 +13,9 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <?!= include('style'); ?>
+    <?!= include('style') ?>
 
-    <?!= include('script'); ?>
+    <?!= include('script') ?>
 
     <script src="https://www.gstatic.com/charts/loader.js"></script>
 
@@ -70,8 +70,10 @@
 
     <div class="container">
 
-        <div class="back" onclick="abrir('index')">
-            ⬅ Volver
+        <div style="text-align: left; margin-bottom: 20px;">
+            <button type="button" onclick="abrir('index')" style="background-color: #34495e; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                ⬅️ Voltar ao Dashboard
+            </button>
         </div>
 
         <!-- GRAFICO -->
@@ -114,10 +116,14 @@
     </div>
 
     <script>
+        // =======================================================================================
+        // LÓGICA DEL PANEL AVANZADO (GRÁFICOS Y RANKING)
+        // =======================================================================================
 
-        // carregar charts
+        // 1. Cargar la librería de Google Charts (la magia que dibuja las barritas de colores).
         google.charts.load('current', { 'packages': ['corechart'] });
 
+        // 2. Traer la información financiera de cada vendedor desde la Planilla (getDashboardVendedores).
         function cargarDashboard() {
 
             google.script.run
@@ -131,6 +137,7 @@
 
         }
 
+        // 3. Crear el gráfico de barras.
         function crearGrafico(data) {
 
             var chartData = new google.visualization.DataTable();
@@ -160,6 +167,7 @@
 
         }
 
+        // 4. Crear la tablita de Ranking (quién vendió más va arriba).
         function crearTabla(data) {
 
             data.sort((a, b) => b.total - a.total);

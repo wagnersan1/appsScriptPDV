@@ -9,8 +9,8 @@
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <?!= include('style'); ?>
-    <?!= include('script'); ?>
+    <?!= include('style') ?>
+    <?!= include('script') ?>
     <script src="https://www.gstatic.com/charts/loader.js"></script>
     <style>
         .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
@@ -25,7 +25,11 @@
     </div>
 
     <div class="container">
-        <div class="back" onclick="abrir('index')">⬅ Volver</div>
+        <div style="text-align: left; margin-bottom: 20px;">
+            <button type="button" onclick="abrir('index')" style="background-color: #34495e; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                ⬅️ Voltar ao Dashboard
+            </button>
+        </div>
 
         <!-- Filtros de Período -->
         <div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">

@@ -13,16 +13,43 @@
     <meta charset="UTF-8">
     <title>SISTEMA PDV TURISMO</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <?!= include('style'); ?>
+    <?!= include('style') ?>
 
-    <?!= include('script'); ?>
+    <?!= include('script') ?>
 
     <script>
         // 1. VERIFICACIÓN DE LOGIN (DEBE IR PRIMERO)
         verificarLogin();
+
+        function verificarLogin() {
+            // 1. Obtenemos la URL del servicio (ej: /gs/exec)
+            var BASE_URL = "<?!= ScriptApp.getService().getUrl() ?>";
+
+            // 2. Obtenemos el objeto 'user' que guardamos en el navegador la última vez.
+            var user = JSON.parse(localStorage.getItem("user"));
+
+            // 3. Verificación: Si NO hay usuario, lo mandamos de vuelta al login.
+            if (!user) {
+                window.top.location.href = BASE_URL + "?page=login";
+                return; // Detiene la ejecución aquí
+            }
+
+            // 4. Si hay usuario, mostramos su nombre en la barra superior.
+            if (user.nome) {
+                document.getElementById("userNome").innerHTML = user.nome;
+            }
+
+            // 5. Llamamos a la función del servidor para pedir los números (Ventas, Caja, etc.)
+            cargarDashboard();
+        }       
     </script>
 
+
     <style>
+        /* =========================================================
+           SECCIÓN DE ESTILOS VISUALES (CSS interno)
+           Define cómo se ven los botones, tarjetas y menúes de esta pantalla.
+           ========================================================= */
         .dashboard {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -58,6 +85,7 @@
 
         .header {
             background: rgba(44, 62, 80, 0.9);
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
             color: white;
             padding: 20px 25px;
@@ -71,6 +99,10 @@
 
 <body>
 
+    <!-- =========================================================
+         HEADER (Barra superior)
+         Muestra el nombre del sistema y el botón de cerrar sesión.
+         ========================================================= -->
     <div class="header">
         <h2><i class="fa-solid fa-globe"></i> SISTEMA PDV TURISMO</h2>
         <div class="user">
@@ -80,7 +112,11 @@
     </div>
 
     <div class="container">
-        <!-- DASHBOARD INFO -->
+        <!-- =========================================================
+             TABLERO (Dashboard Info)
+             Tarjetas que muestran las ventas del día, mes y la caja. 
+             Los montos (...) son rellenados automáticamente con JavaScript.
+             ========================================================= -->
         <div class="dashboard">
             <div class="card-info">
                 <h3>Ventas Hoy</h3>
@@ -108,7 +144,11 @@
             </div>
         </div>
 
-        <!-- MENU -->
+        <!-- =========================================================
+             MENÚ PRINCIPAL (Botones de Navegación)
+             Al hacer clic en un botón, se ejecuta "abrir('nombre_pagina')".
+             Esa función carga el HTML correspondiente en la pantalla.
+             ========================================================= -->
         <div class="grid">
             <div class="card" onclick="abrir('servicos')"><i class="fa-solid fa-wrench"></i>
                 <h3>Serviços</h3>
@@ -141,12 +181,18 @@
     </div>
 
     <script>
-        // 3. LÓGICA DE CARGA (SE EJECUTA AL CARGAR LA PÁGINA)
+        // =========================================================
+        // LÓGICA DE DIBUJADO DE LA PANTALLA
+        // =========================================================
+
+        // 1. Mostrar nombre de usuario que trajimos del LocalStorage.
         if (user && user.nome) {
             document.getElementById("userNome").innerHTML = user.nome;
         }
 
+        // 2. Función que va a pedirle a Google Sheets los números de Ventas y Caja.
         function cargarDashboard() {
+            // google.script.run es la "llamada telefónica" al archivo código.gs del Backend.
             google.script.run
                 .withSuccessHandler(function (data) {
                     if (data) {
@@ -161,7 +207,7 @@
                 .getDashboardData()
         }
 
-        // Iniciar carga de datos
+        // Iniciar carga de datos   
         cargarDashboard();
     </script>
 </body>

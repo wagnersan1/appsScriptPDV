@@ -11,8 +11,8 @@
     <title>Serviços - PDV Turismo</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <?!= include('style'); ?>
-    <?!= include('script'); ?>
+    <?!= include('style') ?>
+    <?!= include('script') ?>
 </head>
 <body>
 
@@ -23,49 +23,255 @@
     <span class="logout" onclick="logout()">Sair</span>
   </div>
   <div>
-    <button class="btn-voltar" onclick="abrir('index')">⬅️ Voltar</button>
+    <div style="text-align: left; margin-bottom: 20px;">
+        <button type="button" onclick="abrir('index')" style="background-color: #34495e; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            ⬅️ Voltar ao Dashboard
+        </button>
+    </div>
   </div>
 </div>
 
 
+<style>
+  /* Estilos específicos para o Modal de Serviços */
+  .modal {
+    display: none; 
+    position: fixed; 
+    z-index: 1000; 
+    left: 0; 
+    top: 0; 
+    width: 100%; 
+    height: 100%; 
+    background-color: rgba(0,0,0,0.5);
+    overflow: auto;
+  }
+  .modal-content {
+    background-color: #fefefe;
+    margin: 5% auto;
+    padding: 20px;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 600px;
+    box-shadow: 0px 4px 8px rgba(0,0,0,0.2);
+  }
+  .close-modal {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  .close-modal:hover { color: black; }
+  
+  .form-group { margin-bottom: 15px; }
+  .form-group label { display: block; font-weight: bold; margin-bottom: 5px; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+  }
+  .btn-salvar {
+    background: #27ae60;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    width: 100%;
+  }
+
+  /* Ajustes para a tabela ficar scrolável */
+  .table-wrapper {
+    overflow-x: auto;
+  }
+  table th, table td { font-size: 13px; text-align: center; }
+</style>
+
 <div class="container">
-  <h3>Lista de Serviços Disponíveis</h3>
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+    <h3>Lista de Serviços Disponíveis</h3>
+    <button id="btnNovoServico" style="display:none; background-color: #27ae60; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+      ➕ Novo Serviço
+    </button>
+  </div>
 
+  <div class="table-wrapper">
+    <table border="1" style="width:100%; border-collapse: collapse; background: white;">
+      <thead style="background: #2c3e50; color: white;">
+        <tr>
+          <th>ID</th>
+          <th>Serviço</th>
+          <th>Categoria</th>
+          <th>Preços (AD/CR/BB)</th>
+          <th>Moeda</th>
+          <th>Custos (N/Menor)</th>
+          <th>Fornecedor</th>
+          <th>Responsável</th>
+          <th>Tel.</th>
+          <th>Status</th>
+          <th>Descrição</th>
+        </tr>
+      </thead>
+      <tbody id="listaServicos">
+        <tr><td colspan="11">Carregando...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
 
-  <table border="1" style="width:100%; border-collapse: collapse; background: white;">
-    <thead style="background: #2c3e50; color: white;">
-      <tr>
-        <th>Serviço</th>
-        <th>Categoria</th>
-        <th>Preço Adulto</th>
-        <th>Moeda</th>
-        <th>Fornecedor</th>
-      </tr>
-    </thead>
-    <tbody id="listaServicos">
-      <!-- O JavaScript vai preencher aqui -->
-    </tbody>
-  </table>
+<!-- O Modal -->
+<div id="modalNovoServico" class="modal">
+  <div class="modal-content">
+    <span class="close-modal" onclick="fecharModal()">&times;</span>
+    <h3>Cadastrar Novo Serviço</h3>
+    <form id="formNovoServico" onsubmit="event.preventDefault(); salvarServico();">
+      <div style="display:flex; gap:10px;">
+        <div class="form-group" style="flex:2;">
+          <label>Nome do Serviço</label>
+          <input type="text" id="ns_nome" required>
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Categoria</label>
+          <input type="text" id="ns_categoria" required placeholder="Ex: Executivo">
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label>Descrição Curta</label>
+        <textarea id="ns_descricao" rows="2" placeholder="Que incluye..."></textarea>
+      </div>
+
+      <div style="display:flex; gap:10px;">
+        <div class="form-group" style="flex:1;"><label>Preço Adulto</label><input type="number" id="ns_preco_ad" required></div>
+        <div class="form-group" style="flex:1;"><label>Preço Criança</label><input type="number" id="ns_preco_cr" required></div>
+        <div class="form-group" style="flex:1;"><label>Preço Bebê</label><input type="number" id="ns_preco_bb" required value="0"></div>
+        <div class="form-group" style="flex:1;"><label>Moeda</label>
+          <select id="ns_moeda">
+            <option value="$">ARS ($)</option>
+            <option value="U$D">USD (U$D)</option>
+            <option value="R$">BRL (R$)</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px;">
+        <div class="form-group" style="flex:1;"><label>Custo Base</label><input type="number" id="ns_custo" required></div>
+        <div class="form-group" style="flex:1;"><label>Custo Menor</label><input type="number" id="ns_custo_m"></div>
+        <div class="form-group" style="flex:1;"><label>Fornecedor</label><input type="text" id="ns_forn"></div>
+      </div>
+      
+      <div style="display:flex; gap:10px;">
+        <div class="form-group" style="flex:1;"><label>Responsável</label><input type="text" id="ns_resp"></div>
+        <div class="form-group" style="flex:1;"><label>Telefone</label><input type="text" id="ns_tel"></div>
+        <div class="form-group" style="flex:1;"><label>Ativo</label>
+          <select id="ns_ativo">
+            <option value="SI">SI</option>
+            <option value="NO">NO</option>
+          </select>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-salvar" id="btnSalvarModal">Salvar Serviço</button>
+    </form>
+  </div>
 </div>
 
 <script>
+  var usuarioLocal = null;
+
+  function verificarPermissaoLocal() {
+    var strUser = localStorage.getItem("pdv_usuario");
+    if(strUser) {
+      usuarioLocal = JSON.parse(strUser);
+      var func = usuarioLocal.funcao ? usuarioLocal.funcao.toUpperCase() : "";
+      if(func === "ADMIN" || func === "GERENTE" || func === "CEO") {
+        document.getElementById("btnNovoServico").style.display = "block";
+      }
+    }
+  }
+
   function carregar() {
     google.script.run
       .withSuccessHandler(function (dados) {
         var html = "";
         dados.forEach(function (s) {
+          var desc = (s.descricao || "").substring(0, 30) + "..."; // Encurtar para não quebrar a tabela
+          var txtPrecos = s.precoAdulto + " / " + s.precoCrianca + " / " + s.precoBebe;
+          var txtCustos = s.custo + " / " + s.custoMenor;
+          
           html += "<tr>" +
-            "<td>" + s.nome + "</td>" +
+            "<td>" + s.id + "</td>" +
+            "<td style='text-align:left; font-weight:bold;'>" + s.nome + "</td>" +
             "<td>" + s.categoria + "</td>" +
-            "<td>" + s.precoAdulto + "</td>" +
-            "<td>" + s.moeda + "</td>" +
+            "<td>" + txtPrecos + "</td>" +
+            "<td><b>" + s.moeda + "</b></td>" +
+            "<td>" + txtCustos + "</td>" +
             "<td>" + s.fornecedor + "</td>" +
+            "<td>" + s.responsavel + "</td>" +
+            "<td>" + s.telefone + "</td>" +
+            "<td>" + (s.ativo ? s.ativo : "SI") + "</td>" +
+            "<td style='text-align:left; font-size:11px;' title='" + s.descricao + "'>" + desc + "</td>" +
             "</tr>";
         });
         document.getElementById("listaServicos").innerHTML = html;
       })
       .getServicos();
   }
+
+  // Lógicas do Modal
+  document.getElementById("btnNovoServico").addEventListener("click", function() {
+    document.getElementById("formNovoServico").reset();
+    document.getElementById("modalNovoServico").style.display = "block";
+  });
+
+  function fecharModal() {
+    document.getElementById("modalNovoServico").style.display = "none";
+  }
+
+  function salvarServico() {
+    var btn = document.getElementById("btnSalvarModal");
+    btn.innerHTML = "Salvando...";
+    btn.disabled = true;
+
+    var dados = {
+      nome: document.getElementById("ns_nome").value,
+      categoria: document.getElementById("ns_categoria").value,
+      descricao: document.getElementById("ns_descricao").value,
+      precoAdulto: document.getElementById("ns_preco_ad").value,
+      precoCrianca: document.getElementById("ns_preco_cr").value,
+      precoBebe: document.getElementById("ns_preco_bb").value,
+      moeda: document.getElementById("ns_moeda").value,
+      custo: document.getElementById("ns_custo").value,
+      custoMenor: document.getElementById("ns_custo_m").value,
+      fornecedor: document.getElementById("ns_forn").value,
+      responsavel: document.getElementById("ns_resp").value,
+      telefone: document.getElementById("ns_tel").value,
+      ativo: document.getElementById("ns_ativo").value
+    };
+
+    google.script.run
+      .withSuccessHandler(function(res) {
+         if (res && res.success) {
+           alert("Serviço adicionado com sucesso! (ID: " + res.id + ")");
+           fecharModal();
+           carregar(); // Recarrega a tabela p/ ver o novo registro
+         }
+         btn.innerHTML = "Salvar Serviço";
+         btn.disabled = false;
+      })
+      .withFailureHandler(function(err) {
+         alert("Erro: " + err.message);
+         btn.innerHTML = "Salvar Serviço";
+         btn.disabled = false;
+      })
+      .guardarNovoServico(dados, usuarioLocal);
+  }
+
+  // Inicializadores
+  verificarPermissaoLocal();
   carregar();
 </script>
 

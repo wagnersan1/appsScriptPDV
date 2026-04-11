@@ -4,16 +4,16 @@
      * =======================================================================================
      * ARQUIVO DO SISTEMA: script.html
      * DESCRIÇÃO: Este arquivo funciona como o CORE em Javascript do Front-End.
-     * Ele é injetado automaticamente em todas as páginas do sistema via <?!= include('script'); ?>.
      * Aqui residem as funções universais responsáveis por: Controle de Sessão (Login/Logout), 
      * Roteamento de Tela (abrir), Autorização de Níveis de Acesso (getPermisos) e Formatadores padrão.
      * =======================================================================================
      */
 
     // =============================
-    // NAVEGAÇÃO ENTRE PÁGINAS
+    // GUARDA DE SEGURIDAD (PERMISOS)
     // =============================
-
+    // Damos a cada tipo de trabajador una lista de "cuartos a los que puede entrar" (paginas) 
+    // y "muebles que puede tocar" (acciones). Si eres VENDEDOR, no puedes entrar a CAJA.
     function getPermisos(funcao) {
 
         var permisos = {
@@ -50,23 +50,28 @@
     var BASE_URL = "<?!= ScriptApp.getService().getUrl() ?>";
 
     // =============================
-    // LOGOUT
+    // BOTÓN DE DESPEDIDA (LOGOUT)
     // =============================
+    // Borramos la credencial ("user") de la memoria para que nadie más pueda usarla, 
+    // y enviamos al usuario de regreso a la pantalla de Login.
     function logout() {
         localStorage.removeItem("user");
         window.top.location.href = BASE_URL + "?page=login";
     }
 
     // =============================
-    // ABRIR PÁGINA
+    // PUERTAS TELETRANSPORTADORAS (ABRIR PÁGINA)
     // =============================
+    // Le dice a Google: "Por favor recarga la web y muéstrame esta otra pantalla (page)".
     function abrir(page) {
         window.top.location.href = BASE_URL + "?page=" + page;
     }
 
     // =============================
-    // VERIFICAR LOGIN
+    // DETECTOR DE INTRUSOS (VERIFICAR LOGIN)
     // =============================
+    // Revisa en el bolsillo del explorador (localStorage) si tienes el carnet "user". 
+    // Si no está... ¡te patea afuera hacia el login!
     function verificarLogin() {
         var user = JSON.parse(localStorage.getItem("user"));
         if (!user || !user.id) {

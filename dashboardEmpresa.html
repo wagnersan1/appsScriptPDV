@@ -6,8 +6,8 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <?!= include('style'); ?>
-    <?!= include('script'); ?>
+    <?!= include('style') ?>
+    <?!= include('script') ?>
 
     <script src="https://www.gstatic.com/charts/loader.js"></script>
 
@@ -53,172 +53,180 @@
 
     <div class="container">
 
-        <div class="back" onclick="abrir('index')">
-            ⬅ Volver
+        <div style="text-align: left; margin-bottom: 20px;">
+            <button type="button" onclick="abrir('index')" style="background-color: #34495e; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                ⬅️ Voltar ao Dashboard
+            </button>
         </div>
 
-    <div style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
-        <label style="font-weight:bold; color:#2c3e50;">Filtro de Período:</label>
-        <select id="filtroPeriodo" onchange="alterarPeriodo()" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
-            <option value="semana" selected>Esta Semana</option>
-            <option value="hoje">Hoje</option>
-            <option value="mes">Este Mês</option>
-            <option value="custom">Personalizado</option>
-        </select>
-        <input type="date" id="dataInicio" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc;" disabled>
-        <input type="date" id="dataFim" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc;" disabled>
-        <button onclick="aplicarFiltro()" style="padding: 10px 20px; background: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight:bold;">🔍 Filtrar</button>
+        <div
+            style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
+            <label style="font-weight:bold; color:#2c3e50;">Filtro de Período:</label>
+            <select id="filtroPeriodo" onchange="alterarPeriodo()"
+                style="padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
+                <option value="semana" selected>Esta Semana</option>
+                <option value="hoje">Hoje</option>
+                <option value="mes">Este Mês</option>
+                <option value="custom">Personalizado</option>
+            </select>
+            <input type="date" id="dataInicio" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc;"
+                disabled>
+            <input type="date" id="dataFim" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc;" disabled>
+            <button onclick="aplicarFiltro()"
+                style="padding: 10px 20px; background: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight:bold;">🔍
+                Filtrar</button>
+        </div>
+
+        <!-- KPIs -->
+        <div class="kpi-grid">
+
+            <div class="kpi" style="border-left: 5px solid #27ae60;">
+                <h3 style="color: #27ae60; margin-top: 0;">Total Vendas (Período)</h3>
+                <div id="kpiPeriodo" style="font-size: 24px; font-weight: bold;">0</div>
+            </div>
+
+            <div class="kpi" style="border-left: 5px solid #2980b9;">
+                <h3 style="color: #2980b9; margin-top: 0;">Qtd. Transações</h3>
+                <div id="kpiQtd" style="font-size: 24px; font-weight: bold;">0</div>
+            </div>
+
+            <div class="kpi" style="border-left: 5px solid #8e44ad;">
+                <h3 style="color: #8e44ad; margin-top: 0;">Lucro (Período)</h3>
+                <div id="kpiLucro" style="font-size: 24px; font-weight: bold;">0</div>
+            </div>
+
+        </div>
+
+        <!-- GRAFICOS -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px;">
+            <div class="chart">
+                <h3 style="text-align:center; color:#2c3e50;">Ventas por vendedor</h3>
+                <div id="chartVendedores" style="height:300px"></div>
+            </div>
+
+            <div class="chart">
+                <h3 style="text-align:center; color:#2c3e50;">Ventas por servicio</h3>
+                <div id="chartServicios" style="height:300px"></div>
+            </div>
+
+            <div class="chart">
+                <h3 style="text-align:center; color:#2c3e50;">Ventas por moneda</h3>
+                <div id="chartMonedas" style="height:300px"></div>
+            </div>
+
+            <div class="chart">
+                <h3 style="text-align:center; color:#2c3e50;">Ventas por día</h3>
+                <div id="chartDias" style="height:300px"></div>
+            </div>
+        </div>
+
     </div>
 
-    <!-- KPIs -->
-    <div class="kpi-grid">
+    <script>
+        // Carregar a biblioteca do Google Charts
+        google.charts.load('current', { packages: ['corechart'] });
+        google.charts.setOnLoadCallback(configurarDatasIniciais);
 
-        <div class="kpi" style="border-left: 5px solid #27ae60;">
-            <h3 style="color: #27ae60; margin-top: 0;">Total Vendas (Período)</h3>
-            <div id="kpiPeriodo" style="font-size: 24px; font-weight: bold;">0</div>
-        </div>
+        function configurarDatasIniciais() {
+            alterarPeriodo(); // Set default range correctly
+            aplicarFiltro();
+        }
 
-        <div class="kpi" style="border-left: 5px solid #2980b9;">
-            <h3 style="color: #2980b9; margin-top: 0;">Qtd. Transações</h3>
-            <div id="kpiQtd" style="font-size: 24px; font-weight: bold;">0</div>
-        </div>
+        function alterarPeriodo() {
+            var tipo = document.getElementById("filtroPeriodo").value;
+            var inpIn = document.getElementById("dataInicio");
+            var inpFim = document.getElementById("dataFim");
 
-        <div class="kpi" style="border-left: 5px solid #8e44ad;">
-            <h3 style="color: #8e44ad; margin-top: 0;">Lucro (Período)</h3>
-            <div id="kpiLucro" style="font-size: 24px; font-weight: bold;">0</div>
-        </div>
+            var hoje = new Date();
 
-    </div>
+            if (tipo === "custom") {
+                inpIn.disabled = false;
+                inpFim.disabled = false;
+                return;
+            }
 
-    <!-- GRAFICOS -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px;">
-        <div class="chart">
-            <h3 style="text-align:center; color:#2c3e50;">Ventas por vendedor</h3>
-            <div id="chartVendedores" style="height:300px"></div>
-        </div>
+            inpIn.disabled = true;
+            inpFim.disabled = true;
 
-        <div class="chart">
-            <h3 style="text-align:center; color:#2c3e50;">Ventas por servicio</h3>
-            <div id="chartServicios" style="height:300px"></div>
-        </div>
+            var dtFim = new Date(hoje);
+            var dtIn = new Date(hoje);
 
-        <div class="chart">
-            <h3 style="text-align:center; color:#2c3e50;">Ventas por moneda</h3>
-            <div id="chartMonedas" style="height:300px"></div>
-        </div>
+            if (tipo === "hoje") {
+                // Já estão iguais
+            } else if (tipo === "semana") {
+                dtIn.setDate(hoje.getDate() - 7);
+            } else if (tipo === "mes") {
+                dtIn.setDate(1); // Primeiro dia do mês atual
+            }
 
-        <div class="chart">
-            <h3 style="text-align:center; color:#2c3e50;">Ventas por día</h3>
-            <div id="chartDias" style="height:300px"></div>
-        </div>
-    </div>
+            // Formatar YYYY-MM-DD local
+            var isoIn = dtIn.getFullYear() + "-" + String(dtIn.getMonth() + 1).padStart(2, '0') + "-" + String(dtIn.getDate()).padStart(2, '0');
+            var isoFim = dtFim.getFullYear() + "-" + String(dtFim.getMonth() + 1).padStart(2, '0') + "-" + String(dtFim.getDate()).padStart(2, '0');
 
-</div>
+            inpIn.value = isoIn;
+            inpFim.value = isoFim;
+        }
 
-<script>
-// Carregar a biblioteca do Google Charts
-google.charts.load('current', {packages:['corechart']});
-google.charts.setOnLoadCallback(configurarDatasIniciais);
+        function aplicarFiltro() {
+            var userLocal = localStorage.getItem("user") || "null";
 
-function configurarDatasIniciais() {
-    alterarPeriodo(); // Set default range correctly
-    aplicarFiltro();
-}
+            var fInicio = document.getElementById("dataInicio").value;
+            var fFim = document.getElementById("dataFim").value;
 
-function alterarPeriodo() {
-    var tipo = document.getElementById("filtroPeriodo").value;
-    var inpIn = document.getElementById("dataInicio");
-    var inpFim = document.getElementById("dataFim");
-    
-    var hoje = new Date();
-    
-    if (tipo === "custom") {
-        inpIn.disabled = false;
-        inpFim.disabled = false;
-        return;
-    }
-    
-    inpIn.disabled = true;
-    inpFim.disabled = true;
-    
-    var dtFim = new Date(hoje);
-    var dtIn = new Date(hoje);
-    
-    if (tipo === "hoje") {
-        // Já estão iguais
-    } else if (tipo === "semana") {
-        dtIn.setDate(hoje.getDate() - 7);
-    } else if (tipo === "mes") {
-        dtIn.setDate(1); // Primeiro dia do mês atual
-    }
-    
-    // Formatar YYYY-MM-DD local
-    var isoIn = dtIn.getFullYear() + "-" + String(dtIn.getMonth()+1).padStart(2,'0') + "-" + String(dtIn.getDate()).padStart(2,'0');
-    var isoFim = dtFim.getFullYear() + "-" + String(dtFim.getMonth()+1).padStart(2,'0') + "-" + String(dtFim.getDate()).padStart(2,'0');
-    
-    inpIn.value = isoIn;
-    inpFim.value = isoFim;
-}
+            var objFiltro = { inicio: fInicio, fim: fFim };
 
-function aplicarFiltro() {
-    var userLocal = localStorage.getItem("user") || "null";
-    
-    var fInicio = document.getElementById("dataInicio").value;
-    var fFim = document.getElementById("dataFim").value;
-    
-    var objFiltro = { inicio: fInicio, fim: fFim };
+            // Efeito Visual de Loading
+            document.getElementById("kpiPeriodo").innerHTML = "...";
+            document.getElementById("kpiQtd").innerHTML = "...";
+            document.getElementById("kpiLucro").innerHTML = "...";
 
-    // Efeito Visual de Loading
-    document.getElementById("kpiPeriodo").innerHTML = "...";
-    document.getElementById("kpiQtd").innerHTML = "...";
-    document.getElementById("kpiLucro").innerHTML = "...";
+            google.script.run
+                .withSuccessHandler(function (d) {
+                    document.getElementById("kpiPeriodo").innerHTML = "$ " + d.totalPeriodo.toFixed(2);
+                    document.getElementById("kpiQtd").innerHTML = d.qtdVendasPeriodo;
+                    document.getElementById("kpiLucro").innerHTML = "$ " + d.lucroPeriodo.toFixed(2);
 
-    google.script.run
-        .withSuccessHandler(function(d) {
-            document.getElementById("kpiPeriodo").innerHTML = "$ " + d.totalPeriodo.toFixed(2);
-            document.getElementById("kpiQtd").innerHTML = d.qtdVendasPeriodo;
-            document.getElementById("kpiLucro").innerHTML = "$ " + d.lucroPeriodo.toFixed(2);
+                    crearGrafico("chartVendedores", d.vendedores.map(v => [v.nome, v.total]), "ARS x Vendedor");
+                    crearGrafico("chartServicios", d.servicios, "ARS x Serviço");
+                    crearPie("chartMonedas", d.monedas, "Volume por Moeda (Original)");
+                    crearGrafico("chartDias", d.ventasPorDia, "ARS x Dia");
+                })
+                .getDashboardEmpresa(userLocal, objFiltro);
+        }
 
-            crearGrafico("chartVendedores", d.vendedores.map(v => [v.nome, v.total]), "ARS x Vendedor");
-            crearGrafico("chartServicios", d.servicios, "ARS x Serviço");
-            crearPie("chartMonedas", d.monedas, "Volume por Moeda (Original)");
-            crearGrafico("chartDias", d.ventasPorDia, "ARS x Dia");
-        })
-        .getDashboardEmpresa(userLocal, objFiltro);
-}
+        function crearGrafico(id, data, title) {
+            var dt = new google.visualization.DataTable();
+            dt.addColumn('string', 'Item');
+            dt.addColumn('number', 'Valor');
+            data.forEach(r => dt.addRow(r));
 
-function crearGrafico(id, data, title) {
-    var dt = new google.visualization.DataTable();
-    dt.addColumn('string', 'Item');
-    dt.addColumn('number', 'Valor');
-    data.forEach(r => dt.addRow(r));
+            var chart = new google.visualization.ColumnChart(document.getElementById(id));
+            chart.draw(dt, {
+                title: title,
+                colors: ['#2980b9'],
+                legend: { position: "none" },
+                chartArea: { width: '80%', height: '70%' },
+                animation: { startup: true, duration: 1000, easing: 'out' }
+            });
+        }
 
-    var chart = new google.visualization.ColumnChart(document.getElementById(id));
-    chart.draw(dt, {
-        title: title,
-        colors: ['#2980b9'],
-        legend: { position: "none" },
-        chartArea: { width: '80%', height: '70%' },
-        animation:{ startup: true, duration: 1000, easing: 'out' }
-    });
-}
+        function crearPie(id, data, title) {
+            var dt = new google.visualization.DataTable();
+            dt.addColumn('string', 'Item');
+            dt.addColumn('number', 'Valor');
+            data.forEach(r => dt.addRow(r));
 
-function crearPie(id, data, title) {
-    var dt = new google.visualization.DataTable();
-    dt.addColumn('string', 'Item');
-    dt.addColumn('number', 'Valor');
-    data.forEach(r => dt.addRow(r));
-
-    var chart = new google.visualization.PieChart(document.getElementById(id));
-    chart.draw(dt, {
-        title: title,
-        pieHole: 0.4,
-        colors: ['#27ae60', '#f39c12', '#8e44ad', '#e74c3c'],
-        chartArea: { width: '90%', height: '80%' },
-        animation:{ startup: true, duration: 1000, easing: 'out' }
-    });
-}
-</script>
+            var chart = new google.visualization.PieChart(document.getElementById(id));
+            chart.draw(dt, {
+                title: title,
+                pieHole: 0.4,
+                colors: ['#27ae60', '#f39c12', '#8e44ad', '#e74c3c'],
+                chartArea: { width: '90%', height: '80%' },
+                animation: { startup: true, duration: 1000, easing: 'out' }
+            });
+        }
+    </script>
 
 </body>
+
 </html>

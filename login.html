@@ -1,12 +1,22 @@
+<!--
+    =======================================================================================
+    ARCHIVO: login.html
+    DESCRIPCIÓN: Pantalla inicial del sistema. 
+    Contiene un formulario simple pidiendo Usuario y Contraseña. Se comunica con `código.gs`
+    para verificar si las credenciales son correctas antes de dejar entrar al usuario.
+    =======================================================================================
+-->
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
+
 <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Login - Travel Santur PDV</title>
-    
+
     <!-- Puxando a fonte padrão modernizada do seu sistema -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    
+
     <style>
         body {
             background: linear-gradient(135deg, #1abc9c, #2980b9);
@@ -17,16 +27,19 @@
             margin: 0;
             font-family: 'Inter', sans-serif;
         }
+
         .login-box {
             background: rgba(255, 255, 255, 0.95);
             padding: 40px;
             border-radius: 15px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
             text-align: center;
             width: 100%;
             max-width: 320px;
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
         }
+
         .login-box h2 {
             margin-top: 0;
             color: #2c3e50;
@@ -34,11 +47,13 @@
             font-size: 26px;
             letter-spacing: 1px;
         }
+
         .login-box p {
             color: #7f8c8d;
             margin-bottom: 25px;
             font-size: 14px;
         }
+
         .login-box input {
             width: 100%;
             padding: 14px;
@@ -50,12 +65,14 @@
             transition: 0.3s;
             background: #f9f9f9;
         }
+
         .login-box input:focus {
             border-color: #2980b9;
             background: white;
             outline: none;
             box-shadow: 0 0 8px rgba(41, 128, 185, 0.4);
         }
+
         .login-box button {
             width: 100%;
             padding: 14px;
@@ -70,11 +87,13 @@
             transition: 0.3s;
             box-shadow: 0 4px 10px rgba(39, 174, 96, 0.3);
         }
+
         .login-box button:hover {
             background: #2ecc71;
             transform: translateY(-2px);
             box-shadow: 0 6px 15px rgba(39, 174, 96, 0.4);
         }
+
         .error-msg {
             color: #e74c3c;
             font-size: 13px;
@@ -84,57 +103,72 @@
         }
     </style>
 </head>
+
 <body>
+    <!-- =========================================================
+         CAJA CENTRAL DE LOGIN
+         Aquí dibujamos el logo, el título y los campos para escribir.
+         ========================================================= -->
     <div class="login-box">
-        <img src="data:image/png;base64,[__ILOGO_BASE64__]" alt="Travel Santur Logo" style="width: 150px; margin-bottom: 15px; border-radius: 10px;">
+        <img link="https://drive.google.com/file/d/1GrdR032gawN1VoflfYFzY3panwHfvR88/view?usp=sharing"
+            alt="Travel Santur Logo" style="width: 150px; margin-bottom: 15px; border-radius: 10px;">
         <h2>Travel Santur</h2>
         <p>Painel de Controle e Vendas</p>
 
         <input type="text" id="user" placeholder="Nome de Usuário" autocomplete="off" onkeydown="verificarEnter(event)">
         <input type="password" id="password" placeholder="Senha" autocomplete="off" onkeydown="verificarEnter(event)">
-        
+
         <div class="error-msg" id="msgErro">Usuário ou senha incorretos.</div>
 
         <button id="btnEntrar" onclick="entrar()">ENTRAR AQUI</button>
     </div>
 
     <script>
+        // =========================================================
+        // LÓGICA DE VALIDACIÓN Y ACCESO (JavaScript Frontend)
+        // =========================================================
+
         // Pega a URL do diretório do Google dinamicamente para navegação contínua
         var BASE_URL = "<?!= ScriptApp.getService().getUrl() ?>";
 
         function verificarEnter(e) {
-            if(e.key === "Enter") {
+            // Permite presionar la tecla 'Enter' para iniciar sesión sin hacer clic al botón.
+            if (e.key === "Enter") {
                 entrar();
             }
         }
 
+        // Función principal que se dispara al hacer clic en "ENTRAR AQUI".
         function entrar() {
             var u = document.getElementById("user").value.trim();
             var p = document.getElementById("password").value.trim();
             var btn = document.getElementById("btnEntrar");
             var msg = document.getElementById("msgErro");
 
-            if(u === "" || p === "") {
+            // Validar que no manden campos vacíos
+            if (u === "" || p === "") {
                 msg.innerText = "Preencha todos os campos.";
                 msg.style.display = "block";
                 return;
             }
 
+            // Cambiamos el texto del botón mientras esperamos (UX).
             btn.disabled = true;
             btn.innerHTML = "Verificando...";
             btn.style.background = "#95a5a6";
             msg.style.display = "none";
 
             // Envia para o Backend (código.gs -> function login)
+            // Aquí le pasamos el usuario (u) y la contraseña (p) al servidor.
             google.script.run
-                .withSuccessHandler(function(res) {
-                    if(res.success) {
+                .withSuccessHandler(function (res) {
+                    if (res.success) {
                         btn.innerHTML = "Redirecionando...";
                         btn.style.background = "#2980b9";
                         // Grava os dados da Sessão no Cache Local
                         localStorage.setItem("user", JSON.stringify(res));
                         // Redireciona para o Menu Principal
-                        window.top.location.href = BASE_URL + "?page=index"; 
+                        window.top.location.href = BASE_URL + "?page=index.html";
                     } else {
                         btn.disabled = false;
                         btn.innerHTML = "ENTRAR AQUI";
@@ -143,7 +177,7 @@
                         msg.style.display = "block";
                     }
                 })
-                .withFailureHandler(function(err) {
+                .withFailureHandler(function (err) {
                     btn.disabled = false;
                     btn.innerHTML = "ENTRAR AQUI";
                     btn.style.background = "#27ae60";
@@ -154,4 +188,5 @@
         }
     </script>
 </body>
+
 </html>

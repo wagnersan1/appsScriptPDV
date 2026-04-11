@@ -1,4 +1,12 @@
-
+<!--
+    =======================================================================================
+    ARCHIVO: ventas.html
+    DESCRIPCIÓN: Pantalla principal de operación ("La Caja Registradora").
+    Aquí es donde el vendedor elige al cliente, selecciona los servicios (tours), 
+    indica cuántos adultos/niños van, y finalmente cobra y guarda la información 
+    encurtiéndola hacia la Planilla de Google (código.gs).
+    =======================================================================================
+-->
 <!DOCTYPE html>
 
 
@@ -8,8 +16,8 @@
     <title>Vendas - PDV Turismo</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <?!= include('style'); ?>
-    <?!= include('script'); ?>
+    <?!= include('style') ?>
+    <?!= include('script') ?>
 
     <style>
         .form-box {
@@ -50,13 +58,28 @@
 
 <body>
 
+    <!-- BOTÃO DE VOLTAR AO DASHBOARD -->
+    <div style="max-width: 600px; margin: 20px auto 10px auto; text-align: left;">
+        <button type="button" onclick="window.top.location.href = BASE_URL + '?page=index';"
+            style="background-color: #34495e; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            ⬅️ Voltar ao Dashboard
+        </button>
+    </div>
+
+    <!-- =========================================================
+         CAJA DEL FORMULARIO DE VENTAS
+         Es el recuadro blanco donde llenamos todos los datos (quien vende, a quien, qué servicio).
+         ========================================================= -->
     <div class="form-box">
 
-        <label for="funcionario">Funcionario</label>
+        <label for="funcionario">Funcionario / Vendedor</label>
         <select id="funcionario" title="Selecione um funcionário">
-            <option value="João" data-comision="10">João (10%)</option>
-            <option value="Maria" data-comision="8">Maria (8%)</option>
-            <option value="Carlos" data-comision="12">Carlos (12%)</option>
+            <option value="">Carregando funcionários...</option>
+        </select>
+
+        <label for="closer">Clouse (Admin / Gerente / Coordenador)</label>
+        <select id="closer" title="Selecione o responsável pelo fechamento">
+            <option value="">Carregando closers...</option>
         </select>
 
         <!-- CLIENTE AUTOCOMPLETE -->
@@ -84,10 +107,16 @@
         <label for="bebes">Bebês</label>
         <input type="number" id="bebes" value="0" title="Quantidade de bebês">
 
-        <label for="valor_unitario">Valor Unitário</label>
-        <input type="number" id="valor_unitario" title="Valor Unitário do Serviço" readonly>
+        <label for="valor_unitario">Valor Unitário Adulto</label>
+        <input type="number" id="valor_unitario" title="Valor Unitário Adulto" readonly>
 
-        <label for="custo_unitario">Custo Unitário</label>
+        <label for="valor_crianca">Valor Unitário Criança</label>
+        <input type="number" id="valor_crianca" title="Valor Unitário Criança" readonly>
+
+        <label for="valor_bebe">Valor Unitário Bebê</label>
+        <input type="number" id="valor_bebe" title="Valor Unitário Bebê" readonly>
+
+        <label for="custo_unitario">Custo Unitário (Geral)</label>
         <input type="number" id="custo_unitario" title="Custo Unitário do Serviço" readonly>
 
         <button type="button" onclick="adicionarAoCarrinho()"
@@ -159,16 +188,62 @@
 
     <script>
         // =======================================================================================
-        // ON LOAD - VERIFICADOR DE PERMISSOES DE TELA
-        // Lê a sessão salva no navegador (localStorage). Se for ADMIN ou GERENTE, desbloqueia
-        // a aba de descontos e câmbio gerencial.
-        // ps: O backend SEMPRE revalida se o usuário forjou isso!
+        // LÓGICA DE VENTAS (JavaScript)
+        // Todo lo que sucede cuando apretamos botones, buscamos nombres o sumamos dinero.
+        // =======================================================================================
+
+        // =======================================================================================
+        // ON LOAD - VIGILANTE DE PERMISOS DE GERENCIA
+        // Lee tu carnet (localStorage). Si no eres Jefe/Gerente, esconde los botones de 
+        // descuento especial o de cambiar la tasa del dólar a mano.
         // =======================================================================================
         window.addEventListener("DOMContentLoaded", function () {
             var userLocal = verificarLogin();
             if (userLocal && (userLocal.funcao === "ADMIN" || userLocal.funcao === "GERENTE" || userLocal.funcao === "CO")) {
                 document.getElementById("area_admin").style.display = "block";
             }
+
+            // Carregar lista de vendedores e gerentes do Google Sheets
+            google.script.run
+                .withSuccessHandler(function (funcionarios) {
+                    var selectFunc = document.getElementById("funcionario");
+                    var selectCloser = document.getElementById("closer");
+
+                    selectFunc.innerHTML = '<option value="">Selecione um funcionário</option>';
+                    selectCloser.innerHTML = '<option value="">Selecione um Closer</option>';
+
+                    funcionarios.forEach(function (f) {
+                        var funcaoUpper = String(f.funcao).toUpperCase();
+                        var ativoUpper = String(f.ativo).toUpperCase();
+
+                        if (ativoUpper === "SI") {
+                            // Filtra vendedores e gerentes ativos
+                            if (funcaoUpper === "VENDEDOR" || funcaoUpper === "GERENTE") {
+                                var option = document.createElement("option");
+                                option.value = f.nome;
+
+                                var comissaoNum = String(f.comissao).replace("%", "");
+                                option.setAttribute("data-comision", comissaoNum);
+                                option.text = f.nome + " (" + f.comissao + (String(f.comissao).includes('%') ? '' : '%') + ")";
+
+                                // Seleciona automaticamente se for o usuário logado
+                                if (userLocal && userLocal.nome === f.nome) {
+                                    option.selected = true;
+                                }
+                                selectFunc.appendChild(option);
+                            }
+
+                            // Filtra Closers (Admin, Gerente, Coordenador)
+                            if (funcaoUpper === "ADMIN" || funcaoUpper === "GERENTE" || funcaoUpper === "CO") {
+                                var optCloser = document.createElement("option");
+                                optCloser.value = f.nome;
+                                optCloser.text = f.nome + " (" + funcaoUpper + ")";
+                                selectCloser.appendChild(optCloser);
+                            }
+                        }
+                    });
+                })
+                .getFuncionarios();
         });
 
         // ===============================
@@ -238,8 +313,8 @@
                         var html = "";
                         servicos.forEach(function (s) {
                             html += `
-    <div onclick="selecionarServico('${s.nome}', '${s.precoAdulto}', '${s.custo}')">
-        ${s.nome} | ${s.moeda} ${s.precoAdulto} (Custo: ${s.custo})
+    <div onclick="selecionarServico('${s.nome}', '${s.precoAdulto}', '${s.precoCrianca}', '${s.precoBebe}', '${s.custo}')">
+        ${s.nome} | Ad: $${s.precoAdulto} / Cr: $${s.precoCrianca} / Bb: $${s.precoBebe} (Custo: ${s.custo})
     </div>`;
                         });
 
@@ -250,10 +325,12 @@
             }, 300);
         }
 
-        function selecionarServico(nome, preco, custo) {
+        function selecionarServico(nome, precoAd, precoCr, precoBb, custo) {
             document.getElementById("servicio_buscar").value = nome;
-            document.getElementById("valor_unitario").value = preco;
-            document.getElementById("custo_unitario").value = custo;
+            document.getElementById("valor_unitario").value = typeof precoAd === 'undefined' || precoAd === 'undefined' ? 0 : precoAd;
+            document.getElementById("valor_crianca").value = typeof precoCr === 'undefined' || precoCr === 'undefined' ? 0 : precoCr;
+            document.getElementById("valor_bebe").value = typeof precoBb === 'undefined' || precoBb === 'undefined' ? 0 : precoBb;
+            document.getElementById("custo_unitario").value = typeof custo === 'undefined' || custo === 'undefined' ? 0 : custo;
 
             document.getElementById("lista_servicos").innerHTML = "";
             document.getElementById("lista_servicos").style.display = "none";
@@ -282,8 +359,10 @@
             var adultos = Number(document.getElementById("adultos").value);
             var criancas = Number(document.getElementById("criancas").value);
             var bebes = Number(document.getElementById("bebes").value);
-            var valor_unit = Number(document.getElementById("valor_unitario").value);
-            var custo_unit = Number(document.getElementById("custo_unitario").value);
+            var valor_ad = Number(document.getElementById("valor_unitario").value) || 0;
+            var valor_cr = Number(document.getElementById("valor_crianca").value) || 0;
+            var valor_bb = Number(document.getElementById("valor_bebe").value) || 0;
+            var custo_unit = Number(document.getElementById("custo_unitario").value) || 0;
 
             if (!servico) {
                 alert("Selecione um serviço primeiro.");
@@ -299,7 +378,9 @@
                 adultos: adultos,
                 criancas: criancas,
                 bebes: bebes,
-                valor_unitario: valor_unit,
+                valor_ad: valor_ad,
+                valor_cr: valor_cr,
+                valor_bb: valor_bb,
                 custo_unitario: custo_unit
             });
 
@@ -309,6 +390,8 @@
             document.getElementById("criancas").value = "0";
             document.getElementById("bebes").value = "0";
             document.getElementById("valor_unitario").value = "";
+            document.getElementById("valor_crianca").value = "";
+            document.getElementById("valor_bebe").value = "";
             document.getElementById("custo_unitario").value = "";
 
             renderizarCarrinho();
@@ -323,12 +406,13 @@
         function editarNoCarrinho(index) {
             var item = carrinho[index];
 
-            // Popula os inputs de volta
             document.getElementById("servicio_buscar").value = item.servico;
             document.getElementById("adultos").value = item.adultos;
             document.getElementById("criancas").value = item.criancas;
             document.getElementById("bebes").value = item.bebes;
-            document.getElementById("valor_unitario").value = item.valor_unitario;
+            document.getElementById("valor_unitario").value = item.valor_ad;
+            document.getElementById("valor_crianca").value = item.valor_cr;
+            document.getElementById("valor_bebe").value = item.valor_bb;
             document.getElementById("custo_unitario").value = item.custo_unitario;
 
             // Remove o item do carrinho para evitar duplicação (agora o usuário salva novamente)
@@ -353,7 +437,7 @@
             var html = "";
             carrinho.forEach(function (item, index) {
                 var sumPessoas = item.adultos + item.criancas + item.bebes;
-                var subtotal = sumPessoas * item.valor_unitario;
+                var subtotal = (item.adultos * item.valor_ad) + (item.criancas * item.valor_cr) + (item.bebes * item.valor_bb);
                 html += `
                 <div style="display:flex; justify-content:space-between; align-items: center; padding:5px 0; border-bottom:1px solid #eee;">
                     <span style="flex:1;"><b>${item.servico}</b> (${sumPessoas} pax)</span>
@@ -379,7 +463,7 @@
             // Ciclo que empilha todos os pax ($) dentro da variavel temporária
             carrinho.forEach(function (item) {
                 var total_pessoas = item.adultos + item.criancas + item.bebes;
-                totalBruto += total_pessoas * item.valor_unitario;
+                totalBruto += (item.adultos * item.valor_ad) + (item.criancas * item.valor_cr) + (item.bebes * item.valor_bb);
                 custoTotalLivres += total_pessoas * item.custo_unitario;
             });
 
@@ -425,15 +509,16 @@
             btn.innerHTML = '<div class="spinner"></div> Guardando Múltiplos Itens...';
 
             var totalCalc = 0;
-            carrinho.forEach(item => totalCalc += (item.valor_unitario * (item.adultos + item.criancas + item.bebes)));
+            carrinho.forEach(item => totalCalc += (item.adultos * item.valor_ad) + (item.criancas * item.valor_cr) + (item.bebes * item.valor_bb));
             var desc = Number(document.getElementById("desconto").value) || 0;
             totalCalc = totalCalc - desc;
 
             var datos = {
-                carrinho: carrinho, 
+                carrinho: carrinho,
                 cliente_id: document.getElementById("cliente_id").value,
                 cliente: document.getElementById("cliente_buscar").value,
                 funcionario: document.getElementById("funcionario").value,
+                closer: document.getElementById("closer").value,
                 moeda: document.getElementById("moneda").value,
                 forma_pagamento: document.getElementById("forma_pagamento").value,
                 status: document.getElementById("status").value,
@@ -457,12 +542,12 @@
                     // Reset da Tela após conclusão de Sucesso Http(200)
                     carrinho = [];
                     renderizarCarrinho();
-                    
+
                     var linkFatura = BASE_URL + "?page=fatura";
                     document.getElementById("resultado").innerHTML = `
                         <div style="background: #e8f8f5; padding: 20px; border-radius: 8px; border-left: 5px solid #27ae60; margin-top: 15px; text-align: left;">
                             <h3 style="color:#27ae60; margin-top:0;">✅ Venda Concluída!</h3>
-                            <p>A transação ID: <b>${datos.idTransacao.substring(0,8).toUpperCase()}</b> foi salva com sucesso no Google Sheets.</p>
+                            <p>A transação ID: <b>${datos.idTransacao.substring(0, 8).toUpperCase()}</b> foi salva com sucesso no Google Sheets.</p>
                             <a href="${linkFatura}" target="_blank" style="display:inline-block; padding:12px 25px; background:#2980b9; color:white; text-decoration:none; border-radius:5px; font-weight:bold; margin-top:10px; font-size:16px;">
                                 🖨️ ABRIR FATURA E VOUCHERS
                             </a>

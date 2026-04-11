@@ -1,18 +1,19 @@
 <!--
     =======================================================================================
-    ARQUIVO DO SISTEMA: separa.html (Módulo Fornecedores)
+    ARQUIVO DO SISTEMA: fornecedores.html (Módulo Fornecedores)
     DESCRIÇÃO: Tela de Gestão de Parceiros Comerciais (Fornecedores).
-    Lista o portfólio de empresas (Ex: Hotéis, Agências de Passeio, Guias) com as quais o PDV
-    possui conexão de serviços, lendo do banco de dados na aba "FORNECEDORES".
+    Lista o portfólio de empresas com as quais o PDV possui conexão.
     =======================================================================================
 -->
 <!DOCTYPE html>
-<html>
-
+<html lang="pt-BR">
 <head>
-
-    <?!= include('style'); ?>
-    <?!= include('script'); ?>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Fornecedores - PDV Turismo</title>
+    <?!= include('style') ?>
+    <?!= include('script') ?>
+    <style>
         .btn-voltar {
             background: #34495e;
             color: white;
@@ -43,56 +44,227 @@
             padding: 12px;
             border-bottom: 1px solid #ddd;
         }
+
+        .btn-add { background-color: #27ae60; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-edit { background-color: #f39c12; color: white; padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer; margin-right: 5px; }
+        .btn-delete { background-color: #e74c3c; color: white; padding: 5px 10px; border: none; border-radius: 3px; cursor: pointer; }
+
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); overflow: auto; }
+        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border-radius: 8px; width: 80%; max-width: 500px; }
+        .close-modal { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close-modal:hover { color: black; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 5px; }
+        .form-group input { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        .btn-salvar { background: #27ae60; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; }
+        .table-wrapper { overflow-x: auto; }
     </style>
 </head>
 
 <body>
     <div class="header">
         <h2>🤝 GESTÃO DE FORNECEDORES</h2>
-        <button class="btn-voltar" onclick="abrir('index')">⬅️ Voltar</button>
+        <div style="text-align: left; margin-bottom: 20px;">
+            <button type="button" onclick="abrir('index')" style="background-color: #34495e; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                ⬅️ Voltar ao Dashboard
+            </button>
+        </div>
+    </div>
 
+    <div class="container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3>Lista de Fornecedores</h3>
+            <button id="btnNovoFornecedor" class="btn-add" onclick="abrirModal()" style="display:none;">➕ Adicionar</button>
+        </div>
 
-        <div class="container">
+        <div class="table-wrapper">
             <table>
                 <thead>
                     <tr>
                         <th>Nome / Empresa</th>
                         <th>Representante</th>
                         <th>Telefone</th>
+                        <th>Email</th>
                         <th>Serviço Prestado</th>
+                        <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody id="tabelaCorpo">
                     <tr>
-                        <td colspan="4">Carregando fornecedores...</td>
+                        <td colspan="6">Carregando fornecedores...</td>
                     </tr>
                 </tbody>
             </table>
         </div>
+    </div>
 
-        <script>
-            function carregarFornecedores() {
-                google.script.run
-                    .withSuccessHandler(function (dados) {
-                        var html = "";
-                        if (dados.length == 0) {
-                            html = "<tr><td colspan='4'>Nenhum fornecedor encontrado.</td></tr>";
-                        } else {
-                            dados.forEach(function (f) {
-                                html += "<tr>" +
-                                    "<td><strong>" + f.nome + "</strong></td>" +
-                                    "<td>" + f.representante + "</td>" +
-                                    "<td>" + f.telefone + "</td>" +
-                                    "<td>" + f.servico + "</td>" +
-                                    "</tr>";
-                            });
-                        }
-                        document.getElementById("tabelaCorpo").innerHTML = html;
-                    })
-                    .getFornecedores();
+    <div id="modalFornecedor" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="fecharModal()">&times;</span>
+            <h3 id="modalTitle">Cadastrar Fornecedor</h3>
+            <form id="formFornecedor" onsubmit="event.preventDefault(); salvarFornecedor();">
+                <input type="hidden" id="f_id">
+                <div class="form-group">
+                    <label>Nome / Empresa</label>
+                    <input type="text" id="f_nome" required>
+                </div>
+                <div class="form-group">
+                    <label>Representante Comercial</label>
+                    <input type="text" id="f_representante">
+                </div>
+                <div class="form-group">
+                    <label>Telefone</label>
+                    <input type="text" id="f_telefone">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="f_email">
+                </div>
+                <div class="form-group">
+                    <label>Serviço Prestado</label>
+                    <input type="text" id="f_servico">
+                </div>
+                <button type="submit" class="btn-salvar" id="btnSalvarModal">Salvar</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        var usuarioLocal = null;
+
+        function verificarPermissaoLocal() {
+            var strUser = localStorage.getItem("pdv_usuario");
+            if(strUser) {
+                usuarioLocal = JSON.parse(strUser);
+                var func = usuarioLocal.funcao ? usuarioLocal.funcao.toUpperCase() : "";
+                if(func === "ADMIN" || func === "GERENTE" || func === "CEO") {
+                    document.getElementById("btnNovoFornecedor").style.display = "block";
+                }
             }
-            carregarFornecedores();
-        </script>
-</body>
+        }
 
+        function carregarFornecedores() {
+            google.script.run
+                .withSuccessHandler(function (dados) {
+                    var html = "";
+                    if (dados.length == 0) {
+                        html = "<tr><td colspan='6'>Nenhum fornecedor encontrado.</td></tr>";
+                    } else {
+                        dados.forEach(function (f) {
+                            var nn = f.nome ? f.nome.replace(/'/g, "\\'") : "";
+                            var nr = f.representante ? f.representante.replace(/'/g, "\\'") : "";
+                            var nt = f.telefone ? f.telefone.replace(/'/g, "\\'") : "";
+                            var ne = f.email ? f.email.replace(/'/g, "\\'") : "";
+                            var ns = f.servico ? f.servico.replace(/'/g, "\\'") : "";
+                            var editParams = "'" + f.id + "', '" + nn + "', '" + nr + "', '" + nt + "', '" + ne + "', '" + ns + "'";
+
+                            var funcs = "";
+                            var role = usuarioLocal && usuarioLocal.funcao ? usuarioLocal.funcao.toUpperCase() : "";
+                            if(role === "ADMIN" || role === "GERENTE" || role === "CEO"){
+                                funcs = "<button class='btn-edit' onclick=\"editarAcao(" + editParams + ")\">📝</button>" +
+                                        "<button class='btn-delete' onclick=\"apagarAcao('" + f.id + "')\">🗑️</button>";
+                            } else {
+                                funcs = "<span style='color:#ccc;'>Sem permissão</span>";
+                            }
+
+                            html += "<tr>" +
+                                "<td><strong>" + f.nome + "</strong></td>" +
+                                "<td>" + f.representante + "</td>" +
+                                "<td>" + f.telefone + "</td>" +
+                                "<td>" + f.email + "</td>" +
+                                "<td>" + f.servico + "</td>" +
+                                "<td>" + funcs + "</td>" +
+                                "</tr>";
+                        });
+                    }
+                    document.getElementById("tabelaCorpo").innerHTML = html;
+                })
+                .getFornecedores();
+        }
+
+        function abrirModal() {
+            document.getElementById("formFornecedor").reset();
+            document.getElementById("f_id").value = "";
+            document.getElementById("modalTitle").innerText = "Cadastrar Fornecedor";
+            document.getElementById("modalFornecedor").style.display = "block";
+        }
+
+        function fecharModal() {
+            document.getElementById("modalFornecedor").style.display = "none";
+        }
+
+        function editarAcao(id, nome, rep, tel, email, ser) {
+            document.getElementById("f_id").value = id;
+            document.getElementById("f_nome").value = nome !== 'undefined' ? nome : '';
+            document.getElementById("f_representante").value = rep !== 'undefined' ? rep : '';
+            document.getElementById("f_telefone").value = tel !== 'undefined' ? tel : '';
+            document.getElementById("f_email").value = email !== 'undefined' ? email : '';
+            document.getElementById("f_servico").value = ser !== 'undefined' ? ser : '';
+            document.getElementById("modalTitle").innerText = "Editar Fornecedor";
+            document.getElementById("modalFornecedor").style.display = "block";
+        }
+
+        function salvarFornecedor() {
+            var btn = document.getElementById("btnSalvarModal");
+            btn.innerHTML = "Salvando...";
+            btn.disabled = true;
+
+            var id = document.getElementById("f_id").value;
+            var dados = {
+                id: id,
+                nome: document.getElementById("f_nome").value,
+                representante: document.getElementById("f_representante").value,
+                telefone: document.getElementById("f_telefone").value,
+                email: document.getElementById("f_email").value,
+                servico: document.getElementById("f_servico").value
+            };
+
+            if (id) {
+                google.script.run
+                    .withSuccessHandler(function(res) {
+                        fecharModal();
+                        carregarFornecedores();
+                        btn.innerHTML = "Salvar";
+                        btn.disabled = false;
+                    })
+                    .withFailureHandler(function(err) {
+                        alert("Erro: " + err.message);
+                        btn.innerHTML = "Salvar";
+                        btn.disabled = false;
+                    })
+                    .editarFornecedor(dados, usuarioLocal);
+            } else {
+                google.script.run
+                    .withSuccessHandler(function(res) {
+                        fecharModal();
+                        carregarFornecedores();
+                        btn.innerHTML = "Salvar";
+                        btn.disabled = false;
+                    })
+                    .withFailureHandler(function(err) {
+                        alert("Erro: " + err.message);
+                        btn.innerHTML = "Salvar";
+                        btn.disabled = false;
+                    })
+                    .salvarFornecedor(dados, usuarioLocal);
+            }
+        }
+
+        function apagarAcao(id) {
+            if (confirm("Tem certeza que deseja apagar este fornecedor?")) {
+                google.script.run
+                    .withSuccessHandler(function(res) {
+                        carregarFornecedores();
+                    })
+                    .withFailureHandler(function(err) {
+                        alert("Erro: " + err.message);
+                    })
+                    .apagarFornecedor(id, usuarioLocal);
+            }
+        }
+
+        verificarPermissaoLocal();
+        carregarFornecedores();
+    </script>
+</body>
 </html>

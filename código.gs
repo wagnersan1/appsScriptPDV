@@ -1,14 +1,24 @@
-// ===============================
-// CONFIG
-// ===============================
+// =======================================================================================
+// ARCHIVO: código.gs
+// DESCRIPCIÓN: Backend principal del sistema PDV (Point of Sale).
+// Este archivo vive en Google Apps Script. Es responsable de conectarse y leer/escribir 
+// en Google Sheets (nuestra "Base de Datos") y luego enviar esa información  
+// cruda o en formato página web hacia la pantalla del usuario (Frontend).
+// =======================================================================================
 
+// ===============================
+// CONFIGURACIÓN GLOBAL
+// ===============================
+// ID de la Planilha de Google conectada. Es vital para que las funciones localicen los datos.
 var SPREADSHEET_ID = "1cYJSUihp-olsTCX5jdk51sgSidbBtiHEHU7MKjcaucg";
 
 
 // ===============================
-// ROUTER PRINCIPAL
+// ROUTER PRINCIPAL (PUNTO DE ENTRADA WEB)
 // ===============================
+// doGet(e) es obligatoria en Google Apps Script. Se ejecuta sola al entrar a la URL web.
 function doGet(e) {
+  // Leemos si la URL pide una página (?page=xxx). Si no, carga "login" por defecto.
   var page = (e && e.parameter && e.parameter.page) ? e.parameter.page : "login";
   
   try {
@@ -26,8 +36,10 @@ function doGet(e) {
 }
 
 // ===============================
-// INCLUIR HTML, CSS E JS
+// FUNCIÓN PARA INCLUIR PIEZAS HTML/CSS/JS
 // ===============================
+// Permite importar archivos como `style.html` o `script.html` dentro del `index.html`.
+// Por eso podemos usar etiquetas como <?!= include('style') ?> en el frontend.
 function include(filename){
   // Usa o createTemplateFromFile para permitir o evaluate()
   return HtmlService.createTemplateFromFile(filename).evaluate().getContent();
@@ -40,21 +52,32 @@ function include(filename){
 
 
 // ===============================
-// LOGIN
+// VALIDACIÓN DE LOGIN (ACTUALIZADO CON HASH)
 // ===============================
-
-
-
-// 3. Função de Login Ajustada para sua Planilha
+// Función interconectada con `login.html`. Revisa si el user/pass ingresado es válido.
 function login(user, password) {
+  // 1. Abre la base de datos ("FUNCIONARIOS").
   var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("FUNCIONARIOS");
-  var data = sheet.getDataRange().getValues();
+  var data = sheet.getDataRange().getValues(); // Extrae todo en texto.
+
+  // 2. Calcula el hash SHA-256 de la contraseña introducida
+  var rawHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, password);
+  var txtHash = rawHash.map(function(byte) {
+      var v = (byte < 0) ? 256 + byte : byte;
+      return ("0" + v.toString(16)).slice(-2);
+  }).join("");
 
   for (var i = 1; i < data.length; i++) {
+    var storedPass = data[i][3].toString();
+    
+    // Soporte Híbrido: Permite entrar si la celda tiene la clave sin encriptar (antigua) 
+    // OR si la celda ya tiene el Hash largo (nueva).
+    var passValida = (storedPass === password) || (storedPass === txtHash);
+
     // Coluna C (índice 2) = Usuario | Coluna D (índice 3) = Senha | Coluna H (índice 7) = Status
     if (
       data[i][2].toString() == user && 
-      data[i][3].toString() == password && 
+      passValida && 
       data[i][7].toString().toUpperCase() == "SI"
     ) {
       return {
@@ -68,13 +91,27 @@ function login(user, password) {
   return { success: false };
 }
 
+// -------------------------------------------------------------
+// FUNCIÓN AUXILIAR PARA EL ADMINISTRADOR (GENERAR HASHES MANUALES)
+// Útil para cuando decidas pasar todas tus claves antiguas a Hash.
+// -------------------------------------------------------------
+function gerarHashAdmin(senhaTextoPlano) {
+  var rawHash = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, senhaTextoPlano);
+  var txtHash = rawHash.map(function(byte) {
+      var v = (byte < 0) ? 256 + byte : byte;
+      return ("0" + v.toString(16)).slice(-2);
+  }).join("");
+  return txtHash;
+}
+
 
 
 
 
 // ===============================
-// DASHBOARD EMPRESA
+// DASHBOARD EMPRESA (LÓGICA GRÁFICA)
 // ===============================
+// Busca todas las ventas de la semana (o del mes) para inyectar al `index.html` (los contadores).
 function getDashboardEmpresa(usuarioStr, filtroDatas) {
   var usuario = null;
   if(usuarioStr) {
@@ -193,13 +230,11 @@ function getDashboardEmpresa(usuarioStr, filtroDatas) {
 // ===============================
 // DASHBOARD VENDEDORES
 // ===============================
-
+// Retorna la facturación total y comisiones separada por cada empleado. Se usa en Reportes.
 function getDashboardVendedores(){
-
-// CORREÇÃO AQUI: Mudado de "Ventas" para "VENDAS"
-var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("VENDAS");
-
-var data = sheet.getDataRange().getValues();
+  // Abre la aba "VENDAS" (donde guardamos todas las operaciones hechas en guardarVenta) 
+  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("VENDAS");
+  var data = sheet.getDataRange().getValues();
 
 var vendedores={};
 
@@ -240,14 +275,12 @@ return result;
 
 
 // ===============================
-// DASHBOARD DATA
+// AGREGADOR DE DATOS DE DASHBOARD
 // ===============================
-
+// Un resumen corto de getDashboardEmpresa para enviar velozmente cifras en dólares/reales/pesos.
 function getDashboardData(usuarioStr, filtroDatas){
-
-var empresa = getDashboardEmpresa(usuarioStr, filtroDatas);
-
-return {
+  var empresa = getDashboardEmpresa(usuarioStr, filtroDatas);
+  return {
 
 totalPeriodo:empresa.totalPeriodo,
 lucroPeriodo:empresa.lucroPeriodo,
@@ -264,15 +297,11 @@ cajaBRL:empresa.cajaBRL
 
 
 // ===============================
-// CLIENTES
+// BUSCADOR DE CLIENTES EN TIEMPO REAL
 // ===============================
-
+// Usada cuando el vendedor tipea un nombre en el cajón de búsqueda del Ticket.
 function buscarClientes(texto){
-
-var sheet =
-SpreadsheetApp
-.openById(SPREADSHEET_ID)
-.getSheetByName("CLIENTES");
+  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("CLIENTES");
 
 var data =
 sheet.getDataRange().getValues();
@@ -582,7 +611,7 @@ function guardarVenta(d, usuario, isTest){
 
 
 // ===============================
-// CAJA
+// BALANCE FINANCIERO DE CAJA CHICA
 // ===============================
 
 function getUltimoSaldo(wb){
@@ -665,23 +694,65 @@ nuevoSaldo
 
 function verificarPermissao(usuarioFuncao, acao){
 
+var uf = String(usuarioFuncao || "").toUpperCase();
+
 var permisos = {
 
 ADMIN:["crear","editar","eliminar","ver"],
 GERENTE:["crear","editar","ver"],
+CEO:["crear","editar","ver"],
+CO:["crear","editar","ver"],
 VENDEDOR:["crear","ver"],
 CAJA:["crear","ver"]
 
 };
 
-return permisos[usuarioFuncao] &&
-permisos[usuarioFuncao].includes(acao);
+return permisos[uf] &&
+permisos[uf].includes(acao);
 
 }
 
 // _________________proteger guardar venta___________________________
 
 
+
+
+// ===============================
+// LISTA HISTÓRICA DE VENTAS (getVentas)
+// ===============================
+// Carga la pestaña "VENDAS" para la interfaz de listaVentas.html
+function getVentas() {
+  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("VENDAS");
+  if (!sheet) return [];
+  
+  var data = sheet.getDataRange().getValues();
+  var result = [];
+
+  // Empezar de atrás hacia adelante para mostrar la info más nueva primero (saltamos la línea 0 que es el header)
+  for (var i = data.length - 1; i > 0; i--) {
+    if (!data[i][1]) continue; // ignorar líneas vacías
+
+    var fecha = data[i][1] instanceof Date 
+                ? Utilities.formatDate(data[i][1], Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm") 
+                : data[i][1];
+
+    result.push({
+      fecha: fecha,
+      funcionario: data[i][2], // C
+      cliente: data[i][3],     // D
+      servico: data[i][4],     // E
+      quantidade: data[i][8],  // I
+      total: data[i][11],      // L
+      moeda: data[i][9],       // J
+      lucro: data[i][15]       // P
+    });
+
+    // Limitamos a traer las últimas 250 ventas para no trabar el navegador
+    if (result.length >= 250) break;
+  }
+  
+  return result;
+}
 
 
 // ===============================
@@ -698,21 +769,77 @@ function getServicos(wb) {
     if (data[i][1] == "") continue; // Pula se o nome do serviço estiver vazio
 
     lista.push({
-      id: data[i][0],          // ID_SERVICO
-      nome: data[i][1],        // NOME_SERVICO
-      descricao: data[i][2],   // DESCRICION
-      categoria: data[i][3],   // CATEGORIA
-      precoAdulto: data[i][4], // PRECO_VENDA_ADULTO
-      precoCrianca: data[i][5],// PRECO_VENDA_CRIAZA
-      precoBebe: data[i][6],   // INCLUIR O BEBÊ (índice 6)
-      moeda: data[i][7],       // MOEDA
-      custo: data[i][8],       // INCLUIR O CUSTO (índice 8)
-      fornecedor: data[i][9],  // FORNECEDOR
-      ativo: data[i][12]       // ATIVO
+      id: data[i][0],          // (0) ID_SERVICO
+      nome: data[i][1],        // (1) NOME_SERVICO
+      descricao: data[i][2],   // (2) DESCRICION
+      categoria: data[i][3],   // (3) CATEGORIA
+      precoAdulto: data[i][4], // (4) PRECO_VENDA_ADULTO
+      precoCrianca: data[i][5],// (5) PRECO_VENDA_CRIAZA
+      precoBebe: data[i][6],   // (6) PRECO_VENDA_BEBE
+      moeda: data[i][7],       // (7) MOEDA
+      custo: data[i][8],       // (8) PRECO_CUSTO
+      custoMenor: data[i][9],  // (9) PRECO_CUSTO_MENOR
+      fornecedor: data[i][10], // (10) FORNECEDOR
+      responsavel: data[i][11],// (11) RESPONSAVEL_DE_VENDA
+      telefone: data[i][12],   // (12) TELEFONE
+      ativo: data[i][13]       // (13) ATIVO
     });
   }
   return lista;
 }
+
+// ===============================
+// FUNÇÃO GUARDAR NOVO SERVIÇO
+// ===============================
+function guardarNovoServico(d, usuario) {
+  if (!usuario || (usuario.funcao.toUpperCase() !== "ADMIN" && usuario.funcao.toUpperCase() !== "GERENTE" && usuario.funcao.toUpperCase() !== "CEO")) {
+    throw new Error("Usuário não tem permissão para cadastrar serviço.");
+  }
+
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) { 
+    throw new Error("O sistema está processando outra ação. Tente novamente.");
+  }
+
+  try {
+    var wb = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheet = wb.getSheetByName("SERVICOS");
+    var data = sheet.getDataRange().getValues();
+    
+    var maxId = 0;
+    for (var i = 1; i < data.length; i++) {
+       var idNum = Number(data[i][0]);
+       if (!isNaN(idNum) && idNum > maxId) {
+         maxId = idNum;
+       }
+    }
+    var novoId = maxId + 1;
+
+    sheet.appendRow([
+      novoId,
+      d.nome || "",
+      d.descricao || "",
+      d.categoria || "",
+      Number(d.precoAdulto) || 0,
+      Number(d.precoCrianca) || 0,
+      Number(d.precoBebe) || 0,
+      d.moeda || "$",
+      Number(d.custo) || 0,
+      Number(d.custoMenor) || 0,
+      d.fornecedor || "",
+      d.responsavel || "",
+      d.telefone || "",
+      d.ativo || "SI"
+    ]);
+
+    return { success: true, id: novoId };
+  } catch (err) {
+    throw new Error(err.message);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 
 
 
@@ -739,11 +866,15 @@ function getFornecedores() {
   return lista;
 }
 
-// Função para salvar novo fornecedor (opcional)
-function salvarFornecedor(dados) {
+// Função para salvar novo fornecedor
+function salvarFornecedor(dados, usuario) {
+  if (!usuario || (usuario.funcao !== "ADMIN" && usuario.funcao !== "GERENTE" && usuario.funcao !== "CEO")) {
+    throw new Error("Acesso negado. Apenas Admin, Gerente ou CEO podem realizar esta ação.");
+  }
   var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("FORNECEDORES");
+  var novoId = dados.id || Utilities.getUuid();
   sheet.appendRow([
-    dados.id,
+    novoId,
     dados.nome,
     dados.representante,
     dados.telefone,
@@ -751,6 +882,36 @@ function salvarFornecedor(dados) {
     dados.servico
   ]);
   return "Fornecedor salvo com sucesso!";
+}
+
+function editarFornecedor(dados, usuario) {
+  if (!usuario || (usuario.funcao !== "ADMIN" && usuario.funcao !== "GERENTE" && usuario.funcao !== "CEO")) {
+    throw new Error("Acesso negado. Apenas Admin, Gerente ou CEO podem realizar esta ação.");
+  }
+  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("FORNECEDORES");
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] == dados.id) {
+      sheet.getRange(i + 1, 2, 1, 5).setValues([[dados.nome, dados.representante, dados.telefone, dados.email, dados.servico]]);
+      return "Fornecedor atualizado com sucesso!";
+    }
+  }
+  throw new Error("Fornecedor não encontrado.");
+}
+
+function apagarFornecedor(id, usuario) {
+  if (!usuario || (usuario.funcao !== "ADMIN" && usuario.funcao !== "GERENTE" && usuario.funcao !== "CEO")) {
+    throw new Error("Acesso negado. Apenas Admin, Gerente ou CEO podem realizar esta ação.");
+  }
+  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("FORNECEDORES");
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] == id) {
+      sheet.deleteRow(i + 1);
+      return "Fornecedor apagado com sucesso!";
+    }
+  }
+  throw new Error("Fornecedor não encontrado.");
 }
 
 // ===============================

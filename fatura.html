@@ -57,6 +57,7 @@
 <body>
     <div class="no-print" style="text-align:center;">
         <button class="btn-print" onclick="window.print()"><i class="fa fa-print"></i> IMPRIMIR COMPROVANTES</button>
+        <button class="btn-print" onclick="window.location.replace('<?!= ScriptApp.getService().getUrl() ?>?page=index')" style="background: #34495e; margin-top: 5px;">⬅️ VOLTAR AO DASHBOARD</button>
         <p style="color:#666; font-size:14px;">Utilize (Ctrl + P) para salvar como PDF ou Enviar para Impressora Térmica.</p>
     </div>
 
@@ -146,7 +147,8 @@
         window.onload = function() {
             var dataJson = localStorage.getItem("fatura_data");
             if (!dataJson) {
-                document.body.innerHTML = "<h2 style='text-align:center; margin-top:50px;'>Ninguna venta encontrada en la sesión de memoria. Por favor, guarde una venta primero.</h2>";
+                alert("Ninguna venta reciente encontrada. Ocurrió al actualizar o acceder directamente a la Factura sin vender. Redirigiendo al inicio.");
+                window.location.replace("<?!= ScriptApp.getService().getUrl() ?>?page=index");
                 return;
             }
             var d = JSON.parse(dataJson);
