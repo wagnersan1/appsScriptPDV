@@ -1,192 +1,541 @@
 <!--
     =======================================================================================
     ARQUIVO DO SISTEMA: listaVentas.html
-    DESCRIÇÃO: Relatório Tabular de Vendas (Histórico).
-    Exibe uma tabela contendo todas as transações extraídas diretamente do Google Sheets via getVentas().
-    Útil para auditoria rápida e fechamentos simples de valores globais das vendas efetuadas.
+    DESCRIÇÃO: Relatório Completo de Vendas — com todos os campos, filtro por período
+    e modo "Meu Desempenho" para vendedores (VENDEDOR/CO veem apenas suas próprias vendas).
+    ADMIN / GERENTE / CEO visualizam toda a base.
     =======================================================================================
 -->
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 
 <head>
-
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-
     <?!= include('style') ?>
-
     <?!= include('script') ?>
 
     <style>
-        .table-box {
-
+        /* ---- KPI CARDS ---- */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+            gap: 15px;
+            margin-bottom: 22px;
+        }
+        .kpi {
             background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-
+            padding: 18px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        .kpi-label {
+            font-size: 12px;
+            color: #888;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .kpi-value {
+            font-size: 21px;
+            font-weight: 700;
+            color: #2c3e50;
         }
 
-        table {
-
-            width: 100%;
-            border-collapse: collapse;
-
+        /* ---- FILTER BAR ---- */
+        .filter-bar {
+            background: white;
+            padding: 16px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            margin-bottom: 22px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            align-items: flex-end;
         }
-
-        th {
-
-            background: #2c3e50;
+        .fg {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .fg label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .fg select, .fg input[type="date"] {
+            padding: 8px 12px;
+            border: 1.5px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #333;
+            outline: none;
+            background: #fafafa;
+            min-width: 140px;
+        }
+        .fg select:focus, .fg input[type="date"]:focus {
+            border-color: #2c3e50;
+            background: white;
+        }
+        .btn-filtrar {
+            padding: 10px 24px;
+            background: #27ae60;
             color: white;
-            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .btn-filtrar:hover { background: #229954; }
+
+        /* ---- VENDEDOR BANNER ---- */
+        .perf-banner {
+            background: linear-gradient(135deg, #1a3a5c 0%, #2980b9 100%);
+            color: white;
+            padding: 18px 24px;
+            border-radius: 12px;
+            margin-bottom: 22px;
+            display: none;
+        }
+        .perf-banner h3 { margin: 0 0 4px 0; font-size: 17px; }
+        .perf-banner p  { margin: 0; opacity: 0.8; font-size: 13px; }
+
+        /* ---- TABLE WRAPPER ---- */
+        .table-wrapper {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        .table-header-bar {
+            padding: 16px 20px;
+            border-bottom: 2px solid #f5f5f5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .table-header-bar h3 { margin: 0; color: #2c3e50; font-size: 16px; }
+        .rec-count { font-size: 13px; color: #999; background: #f0f4f8; padding: 4px 12px; border-radius: 20px; }
+        .table-scroll { overflow-x: auto; }
+
+        table { width: 100%; border-collapse: collapse; min-width: 1200px; }
+        thead tr { background: #2c3e50; }
+        th {
+            color: white;
+            padding: 11px 10px;
             text-align: left;
-
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            white-space: nowrap;
         }
-
         td {
-
-            padding: 10px;
-            border-bottom: 1px solid #ddd;
-
+            padding: 10px 10px;
+            border-bottom: 1px solid #f2f2f2;
+            font-size: 13px;
+            color: #333;
+            white-space: nowrap;
         }
+        tr:hover td { background: #f8fcff; }
+        .num { text-align: right; font-variant-numeric: tabular-nums; }
 
-        tr:hover {
-
-            background: #f5f5f5;
-
+        /* ---- BADGES ---- */
+        .badge {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            display: inline-block;
         }
+        .badge-ok     { background: #d5f5e3; color: #1a8a4a; }
+        .badge-pend   { background: #fef9e7; color: #b7950b; }
+        .badge-cancel { background: #fadbd8; color: #c0392b; }
 
-        .total-box {
-
-            margin-top: 20px;
-            padding: 15px;
-            background: #ecf0f1;
-            border-radius: 10px;
-            font-size: 18px;
-
+        /* ---- TOTALS BAR ---- */
+        .totals-bar {
+            padding: 16px 20px;
+            background: #f8fafc;
+            border-top: 2px solid #eef2f7;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            align-items: center;
         }
+        .total-item { font-size: 14px; font-weight: 600; color: #555; }
+        .total-item span { color: #27ae60; font-size: 15px; }
+
+        /* ---- ESTADO VAZIO ---- */
+        .empty-state {
+            text-align: center;
+            padding: 55px 20px;
+            color: #bbb;
+        }
+        .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+        .empty-state p { font-size: 15px; margin: 0; }
     </style>
-
 </head>
 
 <body>
 
     <div class="header">
-
-        <h2>📊 Lista de Ventas</h2>
-
-        <div class="user">
-            👤 Admin
-        </div>
-
+        <h2>📊 Lista de Vendas</h2>
+        <div class="user" id="userDisplay">👤 Carregando...</div>
     </div>
 
     <div class="container">
 
-        <div style="text-align: left; margin-bottom: 20px;">
-            <button type="button" onclick="abrir('index')" style="background-color: #34495e; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <!-- Botão Voltar -->
+        <div style="margin-bottom: 20px;">
+            <button onclick="abrir('index')"
+                style="background:#34495e; color:white; padding:10px 18px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
                 ⬅️ Voltar ao Dashboard
             </button>
         </div>
 
-        <div class="table-box">
-
-            <table>
-
-                <thead>
-
-                    <tr>
-
-                        <th>Fecha</th>
-                        <th>Funcionario</th>
-                        <th>Cliente</th>
-                        <th>Servicio</th>
-                        <th>Pax</th>
-                        <th>Total</th>
-                        <th>Moneda</th>
-                        <th>Lucro</th>
-
-                    </tr>
-
-                </thead>
-
-                <tbody id="tablaVentas">
-
-                </tbody>
-
-            </table>
-
+        <!-- Banner de Desempenho (apenas para VENDEDOR/CO) -->
+        <div class="perf-banner" id="perfBanner">
+            <h3>📈 Meu Desempenho de Vendas</h3>
+            <p id="perfSubtitle">Visualizando apenas as suas vendas registradas no sistema.</p>
         </div>
 
-        <div class="total-box" id="totales">
-
-            Cargando...
-
+        <!-- KPIs -->
+        <div class="kpi-grid">
+            <div class="kpi" style="border-left: 4px solid #27ae60;">
+                <div class="kpi-label">Total ARS</div>
+                <div class="kpi-value" id="kpiARS">—</div>
+            </div>
+            <div class="kpi" style="border-left: 4px solid #2980b9;">
+                <div class="kpi-label">Total USD</div>
+                <div class="kpi-value" id="kpiUSD">—</div>
+            </div>
+            <div class="kpi" style="border-left: 4px solid #8e44ad;">
+                <div class="kpi-label">Total BRL</div>
+                <div class="kpi-value" id="kpiBRL">—</div>
+            </div>
+            <div class="kpi" style="border-left: 4px solid #e67e22;">
+                <div class="kpi-label">Qtd. Transações</div>
+                <div class="kpi-value" id="kpiQtd">—</div>
+            </div>
+            <div class="kpi" style="border-left: 4px solid #16a085;">
+                <div class="kpi-label">Lucro Total</div>
+                <div class="kpi-value" id="kpiLucro">—</div>
+            </div>
+            <div class="kpi" id="kpiComissaoCard" style="border-left: 4px solid #e74c3c; display:none;">
+                <div class="kpi-label">Minha Comissão</div>
+                <div class="kpi-value" id="kpiComissao">—</div>
+            </div>
         </div>
 
-    </div>
+        <!-- Filtro de Período -->
+        <div class="filter-bar">
+            <div class="fg">
+                <label>Período</label>
+                <select id="filtroPeriodo" onchange="alterarPeriodo()">
+                    <option value="semana" selected>Esta Semana</option>
+                    <option value="hoje">Hoje</option>
+                    <option value="mes">Este Mês</option>
+                    <option value="trimestre">Últimos 3 Meses</option>
+                    <option value="all">Todos os Registros</option>
+                    <option value="custom">Personalizado</option>
+                </select>
+            </div>
+            <div class="fg">
+                <label>De</label>
+                <input type="date" id="dataInicio" disabled>
+            </div>
+            <div class="fg">
+                <label>Até</label>
+                <input type="date" id="dataFim" disabled>
+            </div>
+            <button class="btn-filtrar" onclick="aplicarFiltro()">🔍 Filtrar</button>
+        </div>
+
+        <!-- Tabela -->
+        <div class="table-wrapper">
+            <div class="table-header-bar">
+                <h3>📋 Histórico de Vendas</h3>
+                <span class="rec-count" id="recCount">Carregando...</span>
+            </div>
+
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data / Hora</th>
+                            <th>Funcionário</th>
+                            <th>Cliente</th>
+                            <th>Serviço</th>
+                            <th style="text-align:center">Ad.</th>
+                            <th style="text-align:center">Cr.</th>
+                            <th style="text-align:center">Bb.</th>
+                            <th style="text-align:center">Qtd</th>
+                            <th>Moeda</th>
+                            <th style="text-align:right">V. Unit.</th>
+                            <th style="text-align:right">Total</th>
+                            <th style="text-align:right">Total ARS</th>
+                            <th style="text-align:right">Custo</th>
+                            <th style="text-align:right">Lucro</th>
+                            <th style="text-align:right">Comissão</th>
+                            <th>Pagamento</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaVentas">
+                        <tr>
+                            <td colspan="17">
+                                <div class="empty-state">
+                                    <div class="icon">⌛</div>
+                                    <p>Carregando vendas...</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="totals-bar" id="totalsBar">
+                <span style="color:#ccc; font-size:13px;">Aguardando dados...</span>
+            </div>
+        </div>
+
+    </div><!-- /container -->
 
     <script>
-        // =======================================================================================
-        // LÓGICA DE DIBUJADO DE LA TABLA (JavaScript)
-        // =======================================================================================
+        // ===================================================================
+        // ESTADO GLOBAL
+        // ===================================================================
+        var _user       = null;
+        var _isVendedor = false;
 
-        // Pide a Google Sheets que traiga tooooodas las ventas (getVentas) y las dibuja una por una en la tabla.
-        // También va sumando las monedas para darnos el "Total ARS", "Total USD", etc. abajo de todo.
-        function cargarVentas() {
+        // ===================================================================
+        // 1. GUARDA DE SESSÃO E PERMISSÃO (executa imediatamente)
+        // ===================================================================
+        (function inicializar() {
+            var u = JSON.parse(localStorage.getItem("user") || "null");
 
-            google.script.run
-                .withSuccessHandler(function (data) {
+            // Sem sessão → redirecionar para login
+            if (!u || !u.id) {
+                window.top.location.href =
+                    window.top.location.href.split('?')[0] + '?page=login';
+                return;
+            }
 
-                    var html = "";
+            _user = u;
+            var funcao = (u.funcao || "").toUpperCase();
+            _isVendedor = (funcao === "VENDEDOR" || funcao === "CO");
 
-                    var totalARS = 0;
-                    var totalUSD = 0;
-                    var totalBRL = 0;
-                    var lucroTotal = 0;
+            // Exibir usuário logado no header
+            document.getElementById("userDisplay").innerHTML =
+                "👤 " + u.nome + " (" + u.funcao + ")";
 
-                    data.forEach(function (v) {
+            // Verificar permissão
+            var permitidos = ["ADMIN", "GERENTE", "CEO", "VENDEDOR", "CO"];
+            if (permitidos.indexOf(funcao) === -1) {
+                document.querySelector('.container').innerHTML =
+                    '<div style="text-align:center;padding:70px 20px;">' +
+                    '<div style="font-size:64px;margin-bottom:16px">⛔</div>' +
+                    '<h2 style="color:#e74c3c;">Acesso Negado</h2>' +
+                    '<p style="color:#666;font-size:15px;">Você não tem permissão para acessar esta página.</p>' +
+                    '<button onclick="abrir(\'index\')" style="margin-top:24px;padding:12px 30px;background:#2c3e50;color:white;border:none;border-radius:8px;cursor:pointer;font-size:15px;font-weight:bold;">⬅️ Voltar ao Dashboard</button>' +
+                    '</div>';
+                return;
+            }
 
-                        html += "<tr>";
+            // VENDEDOR/CO: mostrar banner e KPI de comissão
+            if (_isVendedor) {
+                document.getElementById("perfBanner").style.display = "block";
+                document.getElementById("perfSubtitle").textContent =
+                    "Visualizando apenas as vendas registradas para " + u.nome + ".";
+                document.getElementById("kpiComissaoCard").style.display = "block";
+            }
 
-                        html += "<td>" + v.fecha + "</td>";
-                        html += "<td>" + v.funcionario + "</td>";
-                        html += "<td>" + v.cliente + "</td>";
-                        html += "<td>" + v.servico + "</td>";
-                        html += "<td>" + v.quantidade + "</td>";
-                        html += "<td>" + v.total + "</td>";
-                        html += "<td>" + v.moeda + "</td>";
-                        html += "<td>" + v.lucro + "</td>";
+            // Configurar datas e disparar primeira consulta
+            configurarDatas();
+            aplicarFiltro();
+        })();
 
-                        html += "</tr>";
-
-                        if (v.moeda == "ARS") totalARS += Number(v.total);
-                        if (v.moeda == "USD") totalUSD += Number(v.total);
-                        if (v.moeda == "BRL") totalBRL += Number(v.total);
-
-                        lucroTotal += Number(v.lucro);
-
-                    });
-
-                    document.getElementById("tablaVentas").innerHTML = html;
-
-                    document.getElementById("totales").innerHTML =
-                        `
-Total ARS: ${totalARS.toFixed(2)}<br>
-Total USD: ${totalUSD.toFixed(2)}<br>
-Total BRL: ${totalBRL.toFixed(2)}<br>
-Lucro total: ${lucroTotal.toFixed(2)}
-`;
-
-                })
-                .getVentas();
-
+        // ===================================================================
+        // 2. CONTROLE DE DATAS DO FILTRO
+        // ===================================================================
+        function configurarDatas() {
+            alterarPeriodo();
         }
 
-        cargarVentas();
+        function alterarPeriodo() {
+            var tipo  = document.getElementById("filtroPeriodo").value;
+            var inpIn = document.getElementById("dataInicio");
+            var inpFm = document.getElementById("dataFim");
 
+            if (tipo === "custom") {
+                inpIn.disabled = false;
+                inpFm.disabled = false;
+                return;
+            }
+            inpIn.disabled = true;
+            inpFm.disabled = true;
+
+            var hoje = new Date();
+            var dtFim = new Date(hoje);
+            var dtIn  = new Date(hoje);
+
+            if      (tipo === "hoje")      { /* mesmo dia */ }
+            else if (tipo === "semana")    { dtIn.setDate(hoje.getDate() - 7); }
+            else if (tipo === "mes")       { dtIn.setDate(1); }
+            else if (tipo === "trimestre") { dtIn.setMonth(hoje.getMonth() - 3); }
+            else if (tipo === "all")       { dtIn = new Date("2000-01-01"); }
+
+            inpIn.value = isoDate(dtIn);
+            inpFm.value = isoDate(dtFim);
+        }
+
+        function isoDate(d) {
+            return d.getFullYear() + "-"
+                + String(d.getMonth() + 1).padStart(2, '0') + "-"
+                + String(d.getDate()).padStart(2, '0');
+        }
+
+        // ===================================================================
+        // 3. CONSULTA AO BACKEND
+        // ===================================================================
+        function aplicarFiltro() {
+            // Mostrar estado de loading
+            document.getElementById("tablaVentas").innerHTML =
+                '<tr><td colspan="17"><div class="empty-state"><div class="icon">⌛</div><p>Carregando dados...</p></div></td></tr>';
+            document.getElementById("recCount").textContent = "Carregando...";
+            document.getElementById("totalsBar").innerHTML =
+                '<span style="color:#ccc;font-size:13px;">Calculando...</span>';
+
+            var filtros = {
+                inicio: document.getElementById("dataInicio").value,
+                fim:    document.getElementById("dataFim").value
+            };
+            var usuarioStr = localStorage.getItem("user") || "null";
+
+            google.script.run
+                .withSuccessHandler(renderTabela)
+                .withFailureHandler(function(err) {
+                    document.getElementById("tablaVentas").innerHTML =
+                        '<tr><td colspan="17"><div class="empty-state" style="color:#e74c3c;"><div class="icon">❌</div><p>' + err.message + '</p></div></td></tr>';
+                    document.getElementById("recCount").textContent = "Erro";
+                })
+                .getVentas(filtros, usuarioStr);
+        }
+
+        // ===================================================================
+        // 4. RENDERIZAR TABELA E KPIs
+        // ===================================================================
+        function renderTabela(data) {
+            if (!data || data.length === 0) {
+                document.getElementById("tablaVentas").innerHTML =
+                    '<tr><td colspan="17"><div class="empty-state"><div class="icon">📭</div><p>Nenhuma venda encontrada no período selecionado.</p></div></td></tr>';
+                document.getElementById("recCount").textContent = "0 registros";
+                resetKPIs();
+                document.getElementById("totalsBar").innerHTML =
+                    '<span style="color:#ccc;font-size:13px;">Sem dados no período.</span>';
+                return;
+            }
+
+            var html = "";
+            var totARS = 0, totUSD = 0, totBRL = 0;
+            var lucroTotal = 0, comissaoTotal = 0;
+
+            data.forEach(function(v) {
+                var moeda    = String(v.moeda || "ARS");
+                var total    = Number(v.total    || 0);
+                var lucro    = Number(v.lucro    || 0);
+                var comissao = Number(v.comissao || 0);
+
+                // Acumular por moeda original
+                if (moeda === "ARS") totARS += total;
+                if (moeda === "USD") totUSD += total;
+                if (moeda === "BRL") totBRL += total;
+                lucroTotal    += lucro;
+                comissaoTotal += comissao;
+
+                // Badge de status
+                var rawStatus  = String(v.status || "OK").toUpperCase();
+                var badgeClass = "badge-ok";
+                if (rawStatus.includes("PEND"))   badgeClass = "badge-pend";
+                if (rawStatus.includes("CANCEL")) badgeClass = "badge-cancel";
+                var statusLabel = v.status || "OK";
+
+                html +=
+                    '<tr>' +
+                    '<td>'                                               + esc(v.fecha)       + '</td>' +
+                    '<td>'                                               + esc(v.funcionario) + '</td>' +
+                    '<td>'                                               + esc(v.cliente)     + '</td>' +
+                    '<td>'                                               + esc(v.servico)     + '</td>' +
+                    '<td style="text-align:center">'                     + (v.adultos  || 0)  + '</td>' +
+                    '<td style="text-align:center">'                     + (v.criancas || 0)  + '</td>' +
+                    '<td style="text-align:center">'                     + (v.bebes    || 0)  + '</td>' +
+                    '<td style="text-align:center;font-weight:600;">'   + (v.quantidade|| 0) + '</td>' +
+                    '<td><strong>'                                       + moeda              + '</strong></td>' +
+                    '<td class="num">'                                   + fNum(v.valorUnit)  + '</td>' +
+                    '<td class="num" style="font-weight:700;">'         + fNum(total)        + '</td>' +
+                    '<td class="num">'                                   + fNum(v.totalARS)   + '</td>' +
+                    '<td class="num" style="color:#e74c3c;">'           + fNum(v.custo)      + '</td>' +
+                    '<td class="num" style="color:#27ae60;font-weight:700;">' + fNum(lucro)  + '</td>' +
+                    '<td class="num">'                                   + fNum(comissao)     + '</td>' +
+                    '<td>'                                               + esc(v.pagamento || '—') + '</td>' +
+                    '<td><span class="badge ' + badgeClass + '">'       + statusLabel         + '</span></td>' +
+                    '</tr>';
+            });
+
+            document.getElementById("tablaVentas").innerHTML = html;
+            document.getElementById("recCount").textContent  = data.length + " registro(s)";
+
+            // Atualizar KPIs
+            document.getElementById("kpiARS").textContent   = "$ "  + fNum(totARS);
+            document.getElementById("kpiUSD").textContent   = "U$ " + fNum(totUSD);
+            document.getElementById("kpiBRL").textContent   = "R$ " + fNum(totBRL);
+            document.getElementById("kpiQtd").textContent   = data.length;
+            document.getElementById("kpiLucro").textContent = "$ "  + fNum(lucroTotal);
+            if (_isVendedor) {
+                document.getElementById("kpiComissao").textContent = "$ " + fNum(comissaoTotal);
+            }
+
+            // Atualizar barra de totais
+            var totHtml =
+                '<div class="total-item">ARS: <span>$ '  + fNum(totARS)       + '</span></div>' +
+                '<div class="total-item">USD: <span>U$ ' + fNum(totUSD)       + '</span></div>' +
+                '<div class="total-item">BRL: <span>R$ ' + fNum(totBRL)       + '</span></div>' +
+                '<div class="total-item">Lucro Total: <span>$ ' + fNum(lucroTotal) + '</span></div>';
+            if (_isVendedor) {
+                totHtml += '<div class="total-item">Minha Comissão: <span>$ ' + fNum(comissaoTotal) + '</span></div>';
+            }
+            document.getElementById("totalsBar").innerHTML = totHtml;
+        }
+
+        // ===================================================================
+        // 5. HELPERS
+        // ===================================================================
+        function resetKPIs() {
+            ["kpiARS","kpiUSD","kpiBRL","kpiQtd","kpiLucro","kpiComissao"].forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) el.textContent = "—";
+            });
+        }
+
+        function fNum(val) {
+            return Number(val || 0).toLocaleString("es-AR", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+
+        function esc(str) {
+            return String(str || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+        }
     </script>
 
 </body>
-
 </html>

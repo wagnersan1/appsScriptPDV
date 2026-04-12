@@ -1,4 +1,4 @@
-// =======================================================================================
+﻿// =======================================================================================
 // ARCHIVO: código.gs
 // DESCRIPCIÓN: Backend principal del sistema PDV (Point of Sale).
 // Este archivo vive en Google Apps Script. Es responsable de conectarse y leer/escribir 
@@ -718,39 +718,77 @@ permisos[uf].includes(acao);
 
 
 // ===============================
-// LISTA HISTÓRICA DE VENTAS (getVentas)
+// LISTA HISTORICA DE VENTAS (getVentas)
 // ===============================
-// Carga la pestaña "VENDAS" para la interfaz de listaVentas.html
-function getVentas() {
+/**
+ * Retorna o historico de vendas com todos os campos da aba VENDAS.
+ * - Filtro de periodo via filtros.inicio / filtros.fim ("YYYY-MM-DD")
+ * - Role-based: VENDEDOR e CO enxergam apenas suas proprias vendas.
+ * @param {Object} filtros     { inicio: "YYYY-MM-DD", fim: "YYYY-MM-DD" }
+ * @param {string} usuarioStr  JSON string do objeto usuario do localStorage
+ */
+function getVentas(filtros, usuarioStr) {
   var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("VENDAS");
   if (!sheet) return [];
-  
+
+  var usuario = null;
+  try { usuario = JSON.parse(usuarioStr || "null"); } catch(e) {}
+
+  var tz = Session.getScriptTimeZone();
+
+  var dtInicio = null, dtFim = null;
+  if (filtros && filtros.inicio) {
+    var p = filtros.inicio.split("-");
+    dtInicio = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]), 0, 0, 0);
+  }
+  if (filtros && filtros.fim) {
+    var p2 = filtros.fim.split("-");
+    dtFim = new Date(Number(p2[0]), Number(p2[1]) - 1, Number(p2[2]), 23, 59, 59);
+  }
+
+  var funcao = usuario ? String(usuario.funcao || "").toUpperCase() : "";
+  var isVendedor = (funcao === "VENDEDOR" || funcao === "CO");
+
   var data = sheet.getDataRange().getValues();
   var result = [];
 
-  // Empezar de atrás hacia adelante para mostrar la info más nueva primero (saltamos la línea 0 que es el header)
   for (var i = data.length - 1; i > 0; i--) {
-    if (!data[i][1]) continue; // ignorar líneas vacías
+    if (!data[i][1]) continue;
+    var rowDate = data[i][1] instanceof Date ? data[i][1] : new Date(data[i][1]);
+    if (dtInicio && rowDate < dtInicio) continue;
+    if (dtFim    && rowDate > dtFim)    continue;
+    if (isVendedor && data[i][2] !== usuario.nome) continue;
 
-    var fecha = data[i][1] instanceof Date 
-                ? Utilities.formatDate(data[i][1], Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm") 
-                : data[i][1];
+    var fecha = data[i][1] instanceof Date
+                ? Utilities.formatDate(data[i][1], tz, "dd/MM/yyyy HH:mm")
+                : String(data[i][1]);
 
     result.push({
-      fecha: fecha,
-      funcionario: data[i][2], // C
-      cliente: data[i][3],     // D
-      servico: data[i][4],     // E
-      quantidade: data[i][8],  // I
-      total: data[i][11],      // L
-      moeda: data[i][9],       // J
-      lucro: data[i][15]       // P
+      id:          data[i][0],
+      fecha:       fecha,
+      funcionario: data[i][2],
+      cliente:     data[i][3],
+      servico:     data[i][4],
+      adultos:     data[i][5],
+      criancas:    data[i][6],
+      bebes:       data[i][7],
+      quantidade:  data[i][8],
+      moeda:       data[i][9],
+      valorUnit:   data[i][10],
+      total:       data[i][11],
+      cambio:      data[i][12],
+      totalARS:    data[i][13],
+      custo:       data[i][14],
+      lucro:       data[i][15],
+      responsavel: data[i][16],
+      comissao:    data[i][17],
+      pagamento:   data[i][18],
+      status:      data[i][19]
     });
 
-    // Limitamos a traer las últimas 250 ventas para no trabar el navegador
-    if (result.length >= 250) break;
+    if (result.length >= 500) break;
   }
-  
+
   return result;
 }
 
@@ -971,3 +1009,83 @@ function registrarAuditoria(wb, usuarioNome, acao, detalhes, idReferencia) {
   }
 }
 
+// ===============================
+// FUNÇÕES DE CRUD DE CLIENTES
+// ===============================
+function getClientes() {
+  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("CLIENTES");
+  if (!sheet) return [];
+  var data = sheet.getDataRange().getValues();
+  var lista = [];
+  for (var i = 1; i < data.length; i++) {
+    if (!data[i][1]) continue;
+    lista.push({
+      id: data[i][0],
+      nome: data[i][1],
+      nacionalidad: data[i][2],
+      tipo_doc: data[i][3],
+      documento: data[i][4],
+      telefone: data[i][5],
+      email: data[i][6],
+      enderezo_hotel: data[i][7],
+      hotel: data[i][8],
+      quarto: data[i][9],
+      obs: data[i][10]
+    });
+  }
+  return lista;
+}
+
+function addCliente(d) {
+  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("CLIENTES");
+  var novoId = d.id || Utilities.getUuid();
+  sheet.appendRow([
+    novoId,
+    d.nome || "",
+    d.nacionalidad || "",
+    d.tipo_doc || "",
+    d.documento || "",
+    d.telefone || "",
+    d.email || "",
+    d.enderezo_hotel || "",
+    d.hotel || "",
+    d.quarto || "",
+    d.obs || ""
+  ]);
+  return "Cliente salvo com sucesso!";
+}
+
+function editarCliente(d) {
+  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("CLIENTES");
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] == d.id) {
+      sheet.getRange(i + 1, 2, 1, 10).setValues([[
+        d.nome || "",
+        d.nacionalidad || "",
+        d.tipo_doc || "",
+        d.documento || "",
+        d.telefone || "",
+        d.email || "",
+        d.enderezo_hotel || "",
+        d.hotel || "",
+        d.quarto || "",
+        d.obs || ""
+      ]]);
+      return "Cliente atualizado com sucesso!";
+    }
+  }
+  throw new Error("Cliente não encontrado.");
+}
+
+function deletarCliente(id) {
+  var sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName("CLIENTES");
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] == id) {
+      sheet.deleteRow(i + 1);
+      return "Cliente apagado com sucesso!";
+    }
+  }
+  throw new Error("Cliente não encontrado.");
+}

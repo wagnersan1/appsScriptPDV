@@ -18,8 +18,46 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 
     <style>
+        /* Carousel Background */
+        .bg-carousel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            overflow: hidden;
+            background: #000;
+        }
+        .bg-carousel video, .bg-carousel img {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            transform: translate(-50%, -50%);
+            object-fit: cover;
+            opacity: 0;
+            transition: opacity 1.5s ease-in-out;
+        }
+        .bg-carousel .active {
+            opacity: 1;
+        }
+
+        /* Overlay escuro para dar contraste ao login */
+        .bg-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: -1;
+        }
+
         body {
-            background: linear-gradient(135deg, #1abc9c, #2980b9);
             height: 100vh;
             display: flex;
             align-items: center;
@@ -106,12 +144,19 @@
 
 <body>
     <!-- =========================================================
+         CARROSSEL DE FUNDO
+         ========================================================= -->
+    <div class="bg-carousel" id="bgCarousel"></div>
+    <div class="bg-overlay"></div>
+
+    <!-- =========================================================
          CAJA CENTRAL DE LOGIN
          Aquí dibujamos el logo, el título y los campos para escribir.
          ========================================================= -->
     <div class="login-box">
-        <img link="https://drive.google.com/file/d/1GrdR032gawN1VoflfYFzY3panwHfvR88/view?usp=sharing"
-            alt="Travel Santur Logo" style="width: 150px; margin-bottom: 15px; border-radius: 10px;">
+        <!-- Logo ajustado para src direto do Google Drive -->
+        <img src="https://drive.google.com/uc?id=1GrdR032gawN1VoflfYFzY3panwHfvR88"
+            alt="Travel Santur Logo" style="width: 150px; margin-bottom: 15px; border-radius: 10px; object-fit: contain;">
         <h2>Travel Santur</h2>
         <p>Painel de Controle e Vendas</p>
 
@@ -124,6 +169,76 @@
     </div>
 
     <script>
+        // =========================================================
+        // CAROUSEL BACKGROUND LOGIC
+        // =========================================================
+        const mediaItems = [
+            // Vídeos do seu Google Drive convertidos para links de download direto para reprodução:
+            { type: 'video', url: 'https://drive.google.com/uc?export=download&id=1Mfvno1WMXRXnEZceLmT244mkSS9hEwSd' },
+            { type: 'video', url: 'https://drive.google.com/uc?export=download&id=1rzZwm2Tg5EpH7lekj3CkIhtjmNw7er9w' },
+            { type: 'video', url: 'https://drive.google.com/uc?export=download&id=10I6Bn66adeMHXABGoZ-PJg0UbHwQWuG6' },
+            { type: 'video', url: 'https://drive.google.com/uc?export=download&id=1kSgt75C38l4I-dXfVV5gHtpe9vA1G7HV' }
+        ];
+
+        let currentMediaIndex = 0;
+        let bgCarousel;
+
+        function initCarousel() {
+            bgCarousel = document.getElementById('bgCarousel');
+            if (mediaItems.length === 0) return;
+
+            mediaItems.forEach((media, index) => {
+                let el;
+                if (media.type === 'video') {
+                    el = document.createElement('video');
+                    el.src = media.url;
+                    el.muted = true;
+                    el.loop = false;
+                    el.playsInline = true;
+                    // Avança pro próximo quando o vídeo terminar
+                    el.onended = nextMedia;
+                } else {
+                    el = document.createElement('img');
+                    el.src = media.url;
+                }
+                if (index === 0) el.classList.add('active');
+                bgCarousel.appendChild(el);
+            });
+            
+            // Inicia o vídeo se o primeiro for vídeo
+            let firstEl = bgCarousel.children[0];
+            if (firstEl.tagName === 'VIDEO') {
+                firstEl.play().catch(e => console.log('Autoplay prevenido:', e));
+            }
+
+            // Configura o timer pro carrossel apenas se a primeira for imagem
+            if (firstEl.tagName === 'IMG') {
+                setTimeout(nextMedia, 5000); // 5 segundos para imagens
+            }
+        }
+
+        function nextMedia() {
+            if (mediaItems.length <= 1) return;
+            
+            let els = bgCarousel.children;
+            els[currentMediaIndex].classList.remove('active');
+            if (els[currentMediaIndex].tagName === 'VIDEO') {
+                els[currentMediaIndex].pause();
+                els[currentMediaIndex].currentTime = 0;
+            }
+
+            currentMediaIndex = (currentMediaIndex + 1) % mediaItems.length;
+
+            els[currentMediaIndex].classList.add('active');
+            if (els[currentMediaIndex].tagName === 'VIDEO') {
+                els[currentMediaIndex].play().catch(e => console.log('Play prevenido:', e));
+            } else {
+                setTimeout(nextMedia, 5000);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', initCarousel);
+
         // =========================================================
         // LÓGICA DE VALIDACIÓN Y ACCESO (JavaScript Frontend)
         // =========================================================

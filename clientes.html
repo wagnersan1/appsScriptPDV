@@ -19,210 +19,277 @@
     <?!= include('script') ?>
 
     <style>
-        .form {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; }
+        .header-box { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .header-box h2 { margin: 0; color: #2c3e50; font-weight: 800; font-size: 28px; }
+        
+        .btn-back { background-color: #34495e; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: 0.3s; }
+        .btn-back:hover { background-color: #2c3e50; transform: translateY(-2px); }
 
-        table {
-            width: 100%;
-            background: white;
-            border-radius: 10px;
-        }
+        .form-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); margin-bottom: 30px; }
+        .form-card h3 { margin-top: 0; margin-bottom: 20px; color: #2c3e50; font-size: 18px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        
+        .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        
+        .input-group { display: flex; flex-direction: column; }
+        .input-group label { font-size: 13px; font-weight: 600; color: #7f8c8d; margin-bottom: 5px; text-transform: uppercase; }
+        .input-group input, .input-group select, .input-group textarea { padding: 10px 12px; border: 1px solid #bdc3c7; border-radius: 6px; font-size: 14px; transition: 0.3s; font-family: 'Inter', sans-serif;}
+        .input-group input:focus, .input-group textarea:focus { border-color: #3498db; outline: none; box-shadow: 0 0 5px rgba(52, 152, 219, 0.3); }
 
-        td,
-        th {
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-        }
+        .span-2 { grid-column: span 2; }
+        @media (max-width: 768px) { .span-2 { grid-column: span 1; } }
+
+        .btn-save { background: #27ae60; color: white; padding: 12px 24px; border: none; border-radius: 6px; font-weight: bold; font-size: 15px; cursor: pointer; transition: 0.3s; width: 100%; margin-top: 20px; box-shadow: 0 4px 10px rgba(39, 174, 96, 0.3); }
+        .btn-save:hover { background: #2ecc71; transform: translateY(-2px); }
+
+        .table-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; min-width: 900px; }
+        th { background: #f8f9fa; color: #2c3e50; padding: 12px 15px; text-align: left; font-size: 14px; text-transform: uppercase; border-bottom: 2px solid #e9ecef; }
+        td { padding: 12px 15px; border-bottom: 1px solid #e9ecef; color: #34495e; font-size: 14px; }
+        tr:hover td { background: #fdfdfe; }
+
+        .action-btns { display: flex; gap: 5px; }
+        .btn-sm { padding: 6px 12px; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold; transition: 0.2s; display: inline-flex; align-items: center; gap: 4px;}
+        .btn-edit { background: #3498db; color: white; }
+        .btn-edit:hover { background: #2980b9; }
+        .btn-delete { background: #e74c3c; color: white; }
+        .btn-delete:hover { background: #c0392b; }
+        
+        .spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 3px solid #fff; width: 16px; height: 16px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 
 </head>
 
 <body>
 
-    <div class="header">
+    <div class="header-box">
         <h2>👥 Clientes</h2>
+        <button type="button" class="btn-back" onclick="abrir('index')">⬅️ Voltar ao Dashboard</button>
     </div>
 
     <div class="container">
 
-        <div style="text-align: left; margin-bottom: 20px;">
-            <button type="button" onclick="abrir('index')" style="background-color: #34495e; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                ⬅️ Voltar ao Dashboard
-            </button>
+        <div class="form-card">
+            <h3>👤 Cadastrar / Editar Cliente</h3>
+            
+            <div class="grid-form">
+                <div class="input-group">
+                    <label>Nome Completo</label>
+                    <input id="nome" placeholder="Ex: João da Silva">
+                </div>
+
+                <div class="input-group">
+                    <label>Nacionalidade</label>
+                    <input id="nacionalidad" placeholder="Ex: Brasileira">
+                </div>
+
+                <div class="input-group">
+                    <label>Tipo Documento</label>
+                    <select id="tipo_doc">
+                        <option value="RG">RG</option>
+                        <option value="CPF">CPF</option>
+                        <option value="Passaporte">Passaporte</option>
+                        <option value="DNI">DNI</option>
+                        <option value="Outro">Outro</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label>Nº Documento</label>
+                    <input id="documento" placeholder="Número do documento">
+                </div>
+
+                <div class="input-group">
+                    <label>Telefone / WhatsApp</label>
+                    <input id="telefone" placeholder="+55 11 99999-9999">
+                </div>
+
+                <div class="input-group">
+                    <label>Email</label>
+                    <input id="email" type="email" placeholder="cliente@email.com">
+                </div>
+                
+                <div class="input-group span-2">
+                    <label>Endereço do Hotel</label>
+                    <input id="enderezo_hotel" placeholder="Rua, Av, Número - Bairro...">
+                </div>
+
+                <div class="input-group">
+                    <label>Nome do Hotel</label>
+                    <input id="hotel" placeholder="Ex: Copacabana Palace">
+                </div>
+
+                <div class="input-group">
+                    <label>Nº Quarto / Habitación</label>
+                    <input id="quarto" placeholder="Ex: 104">
+                </div>
+
+                <div class="input-group span-2">
+                    <label>Observações</label>
+                    <textarea id="obs" rows="3" placeholder="Restrições, necessidades especiais, preferências..."></textarea>
+                </div>
+            </div>
+
+            <button id="btn_guardar" class="btn-save" onclick="guardar()">💾 GUARDAR CLIENTE</button>
         </div>
 
-        <div class="form">
-
-            <input id="nome" placeholder="Nombre">
-
-            <input id="nacionalidad" placeholder="Nacionalidad">
-
-            <input id="tipo_doc" placeholder="Tipo documento">
-
-            <input id="documento" placeholder="Documento">
-
-            <input id="telefone" placeholder="Teléfono">
-
-            <input id="email" placeholder="Email">
-
-            <input id="hotel" placeholder="Hotel">
-
-            <input id="quarto" placeholder="Habitación">
-
-            <textarea id="obs" placeholder="Observaciones"></textarea>
-
-            <!-- Botão com proteção anti-duplicação de cadastros -->
-            <button id="btn_guardar" onclick="guardar()">Guardar</button>
-
+        <div class="table-card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Documento</th>
+                        <th>Telefone</th>
+                        <th>Hotel (Quarto)</th>
+                        <th style="width: 150px;">Ação</th>
+                    </tr>
+                </thead>
+                <tbody id="lista">
+                    <tr><td colspan="5" style="text-align: center;">Carregando clientes...</td></tr>
+                </tbody>
+            </table>
         </div>
-
-        <table>
-
-            <thead>
-
-                <tr>
-                    <th>Nombre</th>
-                    <th>Documento</th>
-                    <th>Hotel</th>
-                    <th>Acción</th>
-                </tr>
-
-            </thead>
-
-            <tbody id="lista"></tbody>
-
-        </table>
 
     </div>
 
+    <!-- Variável global para armazenar todos os clientes em memória para facilitar a edição -->
     <script>
-
         var editId = null;
+        var clientesGlobais = [];
 
         function cargar() {
-
             google.script.run
                 .withSuccessHandler(function (data) {
-
+                    clientesGlobais = data; // Salva em memória
                     var html = "";
 
-                    data.forEach(function (c) {
-
-                        html += `
-<tr>
-
-<td>${c.nome}</td>
-<td>${c.documento}</td>
-<td>${c.hotel}</td>
-
-<td>
-
-<button onclick="editar('${c.id}')">
-Editar
-</button>
-
-<button onclick="eliminar('${c.id}')">
-Eliminar
-</button>
-
-</td>
-
-</tr>
-`;
-
-                    });
-
-                    lista.innerHTML = html;
-
+                    if (data.length === 0) {
+                        html = "<tr><td colspan='5' style='text-align: center;'>Nenhum cliente cadastrado.</td></tr>";
+                    } else {
+                        data.forEach(function (c) {
+                            html += `
+                                <tr>
+                                    <td><b>${c.nome || '-'}</b></td>
+                                    <td>${c.tipo_doc || ''} ${c.documento || '-'}</td>
+                                    <td>${c.telefone || '-'}</td>
+                                    <td>${c.hotel || ''} <span style="color:#7f8c8d; font-size:12px;">${c.quarto ? '(Q: '+c.quarto+')' : ''}</span></td>
+                                    <td class="action-btns">
+                                        <button class="btn-sm btn-edit" onclick="editar('${c.id}')">✏️ Editar</button>
+                                        <button class="btn-sm btn-delete" onclick="eliminar('${c.id}')">🗑️ Apagar</button>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                    }
+                    document.getElementById("lista").innerHTML = html;
                 })
                 .getClientes();
-
         }
 
-        // =======================================================================================
-        // GUARDAR OU EDITAR CLIENTE (Proteção Assíncrona e Spinners)
-        // -> Protege contra duplo-clique desabilitando o botão e mostrando o spinner.
-        // -> Envia os dados para código.gs `addCliente` ou `editarCliente`.
-        // =======================================================================================
         function guardar() {
             var btn = document.getElementById("btn_guardar");
             btn.disabled = true;
             btn.innerHTML = '<div class="spinner"></div> Aguarde...';
 
             var data = {
-
                 id: editId,
-                nome: nome.value,
-                nacionalidad: nacionalidad.value,
-                tipo_doc: tipo_doc.value,
-                documento: documento.value,
-                telefone: telefone.value,
-                email: email.value,
-                hotel: hotel.value,
-                quarto: quarto.value,
-                obs: obs.value
-
+                nome: document.getElementById("nome").value,
+                nacionalidad: document.getElementById("nacionalidad").value,
+                tipo_doc: document.getElementById("tipo_doc").value,
+                documento: document.getElementById("documento").value,
+                telefone: document.getElementById("telefone").value,
+                email: document.getElementById("email").value,
+                enderezo_hotel: document.getElementById("enderezo_hotel").value,
+                hotel: document.getElementById("hotel").value,
+                quarto: document.getElementById("quarto").value,
+                obs: document.getElementById("obs").value
             };
+
+            if (!data.nome || !data.documento) {
+                alert("Nome e Documento são obrigatórios.");
+                btn.disabled = false;
+                btn.innerHTML = '💾 GUARDAR CLIENTE';
+                return;
+            }
 
             if (editId) {
                 // Modo Edição
                 google.script.run
                     .withSuccessHandler(() => {
-                        editId = null;
-                        btn.disabled = false;
-                        btn.innerHTML = 'Guardar';
+                        limparForm();
                         cargar();
                     })
                     .withFailureHandler((err) => {
                         alert("Erro ao editar: " + err.message);
                         btn.disabled = false;
-                        btn.innerHTML = 'Guardar';
+                        btn.innerHTML = '💾 GUARDAR CLIENTE';
                     })
                     .editarCliente(data);
-
             } else {
                 // Modo Criação
                 google.script.run
                     .withSuccessHandler(() => {
-                        btn.disabled = false;
-                        btn.innerHTML = 'Guardar';
+                        limparForm();
                         cargar();
                     })
                     .withFailureHandler((err) => {
                         alert("Erro ao criar: " + err.message);
                         btn.disabled = false;
-                        btn.innerHTML = 'Guardar';
+                        btn.innerHTML = '💾 GUARDAR CLIENTE';
                     })
                     .addCliente(data);
             }
         }
 
         function editar(id) {
-
             editId = id;
-
+            var c = clientesGlobais.find(x => x.id === id);
+            if(c) {
+                document.getElementById("nome").value = c.nome || "";
+                document.getElementById("nacionalidad").value = c.nacionalidad || "";
+                document.getElementById("tipo_doc").value = c.tipo_doc || "RG";
+                document.getElementById("documento").value = c.documento || "";
+                document.getElementById("telefone").value = c.telefone || "";
+                document.getElementById("email").value = c.email || "";
+                document.getElementById("enderezo_hotel").value = c.enderezo_hotel || "";
+                document.getElementById("hotel").value = c.hotel || "";
+                document.getElementById("quarto").value = c.quarto || "";
+                document.getElementById("obs").value = c.obs || "";
+                
+                document.getElementById("btn_guardar").innerHTML = "💾 ATUALIZAR CLIENTE";
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
         }
 
         function eliminar(id) {
-
-            if (confirm("Eliminar cliente?")) {
-
+            if (confirm("Tem certeza que deseja apagar este cliente definitivamente?")) {
                 google.script.run
                     .withSuccessHandler(() => cargar())
                     .deletarCliente(id);
-
             }
-
         }
 
+        function limparForm() {
+            editId = null;
+            document.getElementById("nome").value = "";
+            document.getElementById("nacionalidad").value = "";
+            document.getElementById("tipo_doc").value = "RG";
+            document.getElementById("documento").value = "";
+            document.getElementById("telefone").value = "";
+            document.getElementById("email").value = "";
+            document.getElementById("enderezo_hotel").value = "";
+            document.getElementById("hotel").value = "";
+            document.getElementById("quarto").value = "";
+            document.getElementById("obs").value = "";
+            
+            var btn = document.getElementById("btn_guardar");
+            btn.disabled = false;
+            btn.innerHTML = '💾 GUARDAR CLIENTE';
+        }
+
+        // Carrega inicial no carregamento da página
         cargar();
-
     </script>
-
 </body>
-
 </html>

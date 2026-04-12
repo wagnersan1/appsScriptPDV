@@ -168,10 +168,10 @@
             <div class="card" onclick="abrir('clientes')"><i class="fa-solid fa-users"></i>
                 <h3>Clientes</h3>
             </div>
-            <div class="card" onclick="abrir('listaVentas')"><i class="fa-solid fa-chart-line"></i>
+            <div class="card" onclick="abrirReportes()"><i class="fa-solid fa-chart-line"></i>
                 <h3>Reportes</h3>
             </div>
-            <div class="card" onclick="abrir('dashboard_empresa')"><i class="fa-solid fa-building"></i>
+            <div class="card" onclick="abrir('dashboardEmpresa')"><i class="fa-solid fa-building"></i>
                 <h3>Empresa</h3>
             </div>
             <div class="card" onclick="abrir('painel')"><i class="fa-solid fa-chart-pie"></i>
@@ -209,6 +209,21 @@
 
         // Iniciar carga de datos   
         cargarDashboard();
+
+        // =========================================================
+        // CONTROLE DE ACESSO: REPORTES
+        // =========================================================
+        // Só ADMIN, GERENTE e CEO podem ver o Histórico de Vendas.
+        function abrirReportes() {
+            var u = JSON.parse(localStorage.getItem("user") || "null");
+            if (!u) { abrir('login'); return; }
+            var rolesPermitidos = ["ADMIN", "GERENTE", "CEO"];
+            if (rolesPermitidos.indexOf((u.funcao || "").toUpperCase()) === -1) {
+                alert("⛔ Acesso Negado\n\nApenas ADMIN, GERENTE e CEO podem acessar os Reportes.");
+                return;
+            }
+            abrir('listaVentas');
+        }
     </script>
 </body>
 
